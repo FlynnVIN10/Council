@@ -1,0 +1,6 @@
+crewai==0.61.0  # Latest stable as of Dec 2025; pin to avoid breaking changes
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+
