@@ -7,15 +7,22 @@ if __name__ == "__main__":
     else:
         prompt = input("Enter your prompt: ")
     
+    print(f"Running council with prompt: {prompt}")
+    print("This may take 30-60 seconds on CPU...\n")
+    
     result = run_council_sync(prompt)
     
+    if "error" in result:
+        print(f"\n❌ Error: {result['error']}")
+        sys.exit(1)
+    
     print("\n=== Council Results ===")
-    print(f"Prompt: {result['prompt']}")
-    for agent in result['agents']:
+    print(f"Prompt: {result.get('prompt', prompt)}")
+    for agent in result.get('agents', []):
         print(f"\n{agent['name']}:")
         print(agent['output'])
     print("\nFinal Answer:")
-    print(result['final_answer'])
+    print(result.get('final_answer', 'N/A'))
     print("\nReasoning Summary:")
-    print(result['reasoning_summary'])
+    print(result.get('reasoning_summary', 'N/A'))
 

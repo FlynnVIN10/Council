@@ -1,6 +1,7 @@
-crewai==0.61.0  # Latest stable as of Dec 2025; pin to avoid breaking changes
+crewai==0.61.0
 fastapi
 uvicorn[standard]
 pydantic
 python-dotenv
+litellm==1.48.0  # Stable version with good Ollama support
 

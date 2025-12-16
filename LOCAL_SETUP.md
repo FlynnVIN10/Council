@@ -18,15 +18,22 @@ brew install ollama  # If Homebrew not installed, it will prompt you
 ollama serve         # Run this in a separate Terminal tab/window – keep it open forever when using the council
 ```
 
+**Important**: You must run `ollama serve` in a separate terminal before using the council. Keep it running while you use the project.
+
 ### 3. Pull the recommended model (in a new Terminal tab)
 
 ```bash
 ollama pull phi3:mini
 ```
 
-This downloads ~2.3 GB once. It's fast on CPU and perfect for your hardware.
+This downloads ~2.3 GB once. It's fast and capable on CPU – perfect for your hardware.
 
 **Alternative for more capability (slower)**: `ollama pull llama3:8b`
+
+**Note**: Uses direct LiteLLM calls to Ollama for reliable performance on CPU (bypasses CrewAI integration issues).
+
+**Performance on CPU-only machines (e.g., 2018 MacBook Pro):**
+- First council run may take 1–3 minutes due to model loading; subsequent calls are faster.
 
 ### 4. Set up Python environment
 
@@ -42,7 +49,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-**Optional**: Open `.env` in a text editor and tweak (e.g., change model to `ollama/llama3:8b`, lower `LLM_MAX_TOKENS=300` for faster responses).
+**Optional**: Open `.env` in a text editor and tweak `LLM_TEMPERATURE` (lower = faster, higher = more creative).
 
 **That's it – setup complete!**
 
