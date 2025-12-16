@@ -10,7 +10,8 @@ def run_council_sync(prompt: str) -> dict:
     print(f"Running council with prompt: {prompt}\n")
     
     # Researcher agent
-    print("Researcher: Gathering insights...")
+    print("Starting council – loading model (first run only, please wait)...")
+    print("Running Researcher... (this may take a few minutes on first run)")
     researcher_prompt = f"""You are the Researcher agent.
 Your role: Gather information and explore options for the given prompt.
 Your goal: Provide comprehensive insights and options.
@@ -26,7 +27,7 @@ Respond thoroughly with insights and options:"""
         return {"error": f"Researcher failed: {str(e)}"}
 
     # Critic agent
-    print("Critic: Evaluating research...")
+    print("Running Critic...")
     critic_prompt = f"""You are the Critic agent.
 Your role: Evaluate and point out weaknesses in the researcher's proposal.
 Your goal: Identify flaws, risks, and improvements in ideas.
@@ -43,7 +44,7 @@ Point out weaknesses and improvements:"""
         return {"error": f"Critic failed: {str(e)}"}
 
     # Planner agent
-    print("Planner: Creating structured plan...")
+    print("Running Planner...")
     planner_prompt = f"""You are the Planner agent.
 Your role: Turn ideas into structured steps or plans.
 Your goal: Create clear, actionable steps from concepts.
@@ -61,7 +62,7 @@ Create structured actionable steps:"""
         return {"error": f"Planner failed: {str(e)}"}
 
     # Judge/Synthesizer agent
-    print("Judge: Synthesizing final answer...")
+    print("Running Judge...")
     judge_prompt = f"""You are the Judge/Synthesizer agent.
 Your role: Synthesize responses from other agents into a final answer with rationale.
 Your goal: Combine inputs, resolve conflicts, and produce a coherent final output.

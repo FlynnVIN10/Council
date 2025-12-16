@@ -30,10 +30,19 @@ See `EXAMPLES.md` for sample prompts and outputs.
 
 - **Note**: Uses direct LiteLLM calls to Ollama for reliable performance on CPU (bypasses CrewAI integration issues).
 - **Important**: Always run `ollama serve` in a separate terminal before starting the council.
-- **First run**: May take 1–3 minutes due to model loading; subsequent calls are faster.
 - On your 2018 Mac, expect 10-30 seconds per agent response (depending on prompt length and model).
 - Tweak `.env`: Adjust `LLM_TEMPERATURE` for faster/slower responses.
 - If sluggish, switch to a smaller model in `LOCAL_MODELS.md`.
 - Monitor RAM: Keep under 12GB usage to avoid swapping.
 - **Recommended model**: phi3:mini (fast and capable on CPU).
+
+## Performance Expectations on 2018 MacBook Pro (CPU-only)
+
+- **First council run: 2–5 minutes**  
+  This is normal — Ollama is loading the full model (~2.3 GB) into memory for the first time.
+
+- **Subsequent runs: 15–60 seconds total**  
+  The model remains loaded as long as `ollama serve` is running.
+
+**Tip**: Keep the terminal running `ollama serve` open between sessions to avoid reloading.
 

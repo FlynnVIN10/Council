@@ -32,8 +32,15 @@ This downloads ~2.3 GB once. It's fast and capable on CPU – perfect for your h
 
 **Note**: Uses direct LiteLLM calls to Ollama for reliable performance on CPU (bypasses CrewAI integration issues).
 
-**Performance on CPU-only machines (e.g., 2018 MacBook Pro):**
-- First council run may take 1–3 minutes due to model loading; subsequent calls are faster.
+## Performance Expectations on 2018 MacBook Pro (CPU-only)
+
+- **First council run: 2–5 minutes**  
+  This is normal — Ollama is loading the full model (~2.3 GB) into memory for the first time.
+
+- **Subsequent runs: 15–60 seconds total**  
+  The model remains loaded as long as `ollama serve` is running.
+
+**Tip**: Keep the terminal running `ollama serve` open between sessions to avoid reloading.
 
 ### 4. Set up Python environment
 
