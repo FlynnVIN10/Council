@@ -30,7 +30,7 @@ See `EXAMPLES.md` for sample prompts and outputs.
 
 - **Note**: Uses direct LiteLLM calls to Ollama for reliable performance on CPU (bypasses CrewAI integration issues).
 - **Important**: Always run `ollama serve` in a separate terminal before starting the council.
-- On your 2018 Mac with recommended settings (LLM_MAX_TOKENS=3700), expect ~12 minutes for a full council run.
+- On your 2018 Mac with recommended settings (LLM_MAX_TOKENS=5000), expect ~15–18 minutes for a full council run.
 - Monitor RAM: Keep under 12GB usage to avoid swapping.
 - **Recommended model**: phi3:mini (capable on CPU).
 
@@ -39,8 +39,8 @@ See `EXAMPLES.md` for sample prompts and outputs.
 - **First council run: 2–5 minutes**  
   This is normal — Ollama is loading the full model (~2.3 GB) into memory for the first time.
 
-- **Subsequent runs with recommended settings: ~12 minutes total**  
-  With `LLM_MAX_TOKENS=3700`, full council runs take approximately 12 minutes. The model remains loaded as long as `ollama serve` is running.
+- **Subsequent runs with recommended settings: ~15–18 minutes total**  
+  With `LLM_MAX_TOKENS=5000`, full council runs take approximately 15–18 minutes. The model remains loaded as long as `ollama serve` is running.
 
 **Tip**: Keep the terminal running `ollama serve` open between sessions to avoid reloading.
 
@@ -51,15 +51,15 @@ It prioritizes frontier practices (formal methods, advanced types, property-base
 
 ### Recommended Settings (Bold & Deep Mode)
 
-For optimal rich, untruncated 4-item portfolios with detailed rationales and plans:
+For full, untruncated 4-item portfolios with complete rationales, synergies, metrics, and mitigations:
 
 ```
 LLM_TEMPERATURE=1.0
-LLM_MAX_TOKENS=3700    # ~12 minute full council runs on CPU-only hardware
-                       # Provides maximum depth and completeness without cutoff
+LLM_MAX_TOKENS=5000    # ~15–18 minute full council runs on CPU-only hardware
+                       # Enables maximum visionary depth without fallback or cutoff
 ```
 
-**Note**: This setting delivers the full visionary power of the bold/experimental council.
+**Note**: This is the optimal configuration for complex, meta, or self-reflective prompts. The council delivers complete, elaborate outputs at this level.
 
 ### Success Example: Meta-Cognitive Self-Improvement
 
