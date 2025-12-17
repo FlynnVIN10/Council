@@ -2,6 +2,11 @@
 
 These were simulated/tested with phi3:mini. Actual outputs vary slightly due to non-determinism.
 
+## Council Personality (Bold/Experimental Mode)
+
+The council is now tuned to prioritize cutting-edge, unconventional, and high-impact software engineering practices over safe mainstream advice.
+Expect suggestions involving formal methods, advanced types, AI agents, property-based testing, and other frontier techniques.
+
 ## Example 1: Simple Fact
 
 **Prompt**: "What is the capital of France?"
