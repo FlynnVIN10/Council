@@ -1,4 +1,5 @@
 import asyncio
+import re
 from concurrent.futures import ThreadPoolExecutor
 from src.ollama_llm import ollama_completion
 
@@ -72,19 +73,34 @@ Output a clear, numbered multi-track action plan with timelines."""
 
     # Judge/Synthesizer agent
     print("Running Judge (synthesizing visionary advice)...")
-    judge_prompt = f"""You are the Judge/Synthesizer — a radical visionary mentor who champions transformative, high-risk/high-reward improvement over incremental safety.
-Your core directive: NEVER converge on a single practice. Always synthesize a bold portfolio of 3–5 complementary advanced techniques.
-Prioritize ideas with potential for 5x–10x gains in correctness, insight, or skill, even at the cost of complexity.
-Explicitly reject or demote anything too conventional or narrowly focused.
-Rank recommendations: Experimental > Advanced > Mainstream.
-Clearly label the ambition level of each.
-Structure strictly:
-Final Answer: [concise portfolio of 3–5 bold primary recommendations]
-Rationale: [detailed explanation why this portfolio is superior to conventional paths; discuss synergies, risks, and transformative potential]
+    judge_prompt = f"""You are the Judge/Synthesizer — a radical visionary obsessed with 10x transformation.
+NON-NEGOTIABLE RULES:
+- You MUST output EXACTLY 4 numbered bold recommendations. No more, no less.
+- Never converge on fewer than 4.
+- If inputs are narrow, you MUST diversify by adding complementary advanced techniques from your knowledge.
+- Each item must be experimental or advanced (formal methods, property-based, AI agents, advanced types, etc.).
+
+Required structure — follow EXACTLY:
+Final Answer:
+1. [Bold technique #1] – one-sentence description
+2. [Bold technique #2] – one-sentence description
+3. [Bold technique #3] – one-sentence description
+4. [Bold technique #4] – one-sentence description
+
+Rationale: [Detailed explanation of the full portfolio, synergies, transformative potential vs conventional approaches. Max 600 words.]
+
+If you cannot produce 4, use these fallback techniques to complete the list:
+- Local AI agent as persistent code critic/refactor
+- Gradual adoption of refinement/dependent types
+- Symbolic execution or advanced fuzzing integration
+- Equality saturation via e-graphs for optimization
+
 Researcher: {research_output}
 Critic: {critic_output}
 Planner: {planner_output}
-Prompt: {prompt}"""
+Prompt: {prompt}
+
+Now synthesize a complete 4-item portfolio."""
     
     try:
         judge_output = ollama_completion([{"role": "user", "content": judge_prompt}])
@@ -97,10 +113,9 @@ Prompt: {prompt}"""
         parts = judge_output.split("Final Answer:")[1].split("Rationale:")
         final_answer = parts[0].strip()
         full_rationale = parts[1].strip() if len(parts) > 1 else "Consensus reached."
-        # Limit reasoning_summary to ~300 words for conciseness
-        words = full_rationale.split()
-        if len(words) > 300:
-            reasoning_summary = " ".join(words[:300]) + "..."
+        # Limit reasoning_summary to ~800 chars for conciseness
+        if len(full_rationale) > 800:
+            reasoning_summary = full_rationale[:800] + "\n[...truncated for brevity]"
         else:
             reasoning_summary = full_rationale
     elif "Final Answer:" in judge_output:
@@ -109,6 +124,17 @@ Prompt: {prompt}"""
     else:
         final_answer = judge_output
         reasoning_summary = "Consensus reached from council deliberation"
+    
+    # Post-processing: Ensure exactly 4 numbered items (enforce portfolio requirement)
+    numbered_items = re.findall(r'^\d+\.\s', final_answer, re.MULTILINE)
+    if len(numbered_items) < 4:
+        fallback = """
+[Fallback: Enforcing bold portfolio requirement]
+1. Property-based testing with Hypothesis/QuickCheck for invariant discovery
+2. Selective formal verification of critical paths using Lean/Coq
+3. Local AI agent as automated code critic and refactor assistant
+4. Experiment with refinement/dependent types in key modules"""
+        final_answer += fallback
 
     agents_outputs = [
         {"name": "Researcher", "output": research_output},

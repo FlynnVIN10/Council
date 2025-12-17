@@ -51,3 +51,14 @@ See `EXAMPLES.md` for sample prompts and outputs.
 The council is intentionally tuned for radical, high-leverage software engineering growth.
 It prioritizes frontier practices (formal methods, advanced types, property-based testing, AI agents, etc.) and produces portfolios of ambitious experiments rather than single safe recommendations.
 
+### Recommended Settings for Bold Mode
+
+For optimal performance with the bold/experimental personality, configure your `.env` file with:
+
+```
+LLM_TEMPERATURE=1.0
+LLM_MAX_TOKENS=1200
+```
+
+These settings maximize creativity/diversity from small models and allow full portfolio rationale without cutoff.
+
