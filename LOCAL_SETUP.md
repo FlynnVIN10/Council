@@ -56,7 +56,15 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-**Optional**: Open `.env` in a text editor and tweak `LLM_TEMPERATURE` (lower = faster, higher = more creative).
+**Recommended Settings**: Open `.env` in a text editor and configure:
+
+```
+LLM_TEMPERATURE=1.0
+LLM_MAX_TOKENS=3700    # ~12 minute full council runs on CPU-only hardware
+                       # Provides maximum depth and completeness without cutoff
+```
+
+This delivers the full visionary power of the bold/experimental council with rich, untruncated portfolios.
 
 **That's it – setup complete!**
 
@@ -103,7 +111,7 @@ ollama serve
 ## Troubleshooting
 
 - **If Ollama not responding**: Ensure `ollama serve` is running in a separate terminal.
-- **Timeouts**: Increase `LLM_MAX_TOKENS` in `.env` if responses are cut off.
+- **Timeouts**: Ensure `LLM_MAX_TOKENS=3700` in `.env` for complete responses (recommended setting).
 - **RAM issues**: Close other apps; use smaller model (phi3:mini).
 - **No external calls**: Project uses dummy/no keys; verify with network monitor.
 
