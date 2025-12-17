@@ -12,7 +12,7 @@ def run_council_sync(prompt: str) -> dict:
     
     # Researcher agent
     print("Starting council – loading model (first run only, please wait)...")
-    print("Running Researcher (exploring bold ideas)... (this may take a few minutes on first run)")
+    print("\nRunning Researcher (bold exploration)...")
     researcher_prompt = f"""You are the Researcher agent — a bold, visionary explorer of advanced software engineering practices.
 Go beyond mainstream advice and uncover cutting-edge, unconventional, experimental, or research-level techniques with high potential impact.
 Draw from academic papers, niche tools, and elite teams (Jane Street, DeepMind, NASA, seL4, etc.).
@@ -38,7 +38,7 @@ Provide detailed reasoning, examples, risks, and rewards."""
         return {"error": f"Researcher failed: {str(e)}"}
 
     # Critic agent
-    print("Running Critic (challenging conventions)...")
+    print("Running Critic (contrarian challenge)...")
     critic_prompt = f"""You are the Critic agent — a ruthless contrarian who rejects incremental, safe, or conventional improvements.
 If the Researcher includes anything resembling mainstream advice, aggressively dismiss it as insufficient for dramatic growth.
 Demand radically higher-leverage alternatives, even if they are harder, less proven, or considered overkill by most developers.
@@ -55,7 +55,7 @@ Output sharp, focused critique that forces greater ambition."""
         return {"error": f"Critic failed: {str(e)}"}
 
     # Planner agent
-    print("Running Planner (structuring experiments)...")
+    print("Running Planner (multi-track strategy)...")
     planner_prompt = f"""You are the Planner agent — a pragmatic strategist for high-ambition experiments.
 Turn the bold ideas from Researcher and Critic into a portfolio of concurrent or phased personal experiments (aim for 3–5 parallel tracks, not one).
 Make each track concrete: tools, learning resources, small pilot projects, success metrics, and risk mitigations.
@@ -72,7 +72,7 @@ Output a clear, numbered multi-track action plan with timelines."""
         return {"error": f"Planner failed: {str(e)}"}
 
     # Judge/Synthesizer agent
-    print("Running Judge (synthesizing visionary advice)...")
+    print("Running Judge (visionary synthesis)...\n")
     judge_prompt = f"""You are the Judge/Synthesizer — a radical visionary obsessed with 10x transformation.
 NON-NEGOTIABLE RULES:
 - You MUST output EXACTLY 4 numbered bold recommendations. No more, no less.
