@@ -46,8 +46,8 @@ See `EXAMPLES.md` for sample prompts and outputs.
 
 **Tip**: Keep the terminal running `ollama serve` open between sessions to avoid reloading.
 
-## Council Personality (Bold/Experimental Mode)
+## Council Mode: Bold & Experimental
 
-The council is now tuned to prioritize cutting-edge, unconventional, and high-impact software engineering practices over safe mainstream advice.
-Expect suggestions involving formal methods, advanced types, AI agents, property-based testing, and other frontier techniques.
+The council is intentionally tuned for radical, high-leverage software engineering growth.
+It prioritizes frontier practices (formal methods, advanced types, property-based testing, AI agents, etc.) and produces portfolios of ambitious experiments rather than single safe recommendations.
 
