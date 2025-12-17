@@ -21,7 +21,7 @@ See `EXAMPLES.md` for sample prompts and outputs.
 1. Follow `LOCAL_SETUP.md` to set up Ollama and models.
 2. Copy `.env.example` to `.env` and adjust if needed.
 3. Activate venv: `source venv/bin/activate`
-4. Run CLI: `python run_council.py "Your prompt here"`
+4. Run CLI: `python run_council.py` (interactive mode) or `python run_council.py "Your prompt here"` (single-shot)
 5. Run API/UI: `uvicorn src.api.main:app --reload`
 6. Open http://localhost:8000 in your browser for the UI.
 7. Or POST to http://localhost:8000/council with JSON `{"prompt": "Your prompt"}`.
@@ -43,6 +43,18 @@ See `EXAMPLES.md` for sample prompts and outputs.
   With `LLM_MAX_TOKENS=5000`, full council runs take approximately 15–18 minutes. The model remains loaded as long as `ollama serve` is running.
 
 **Tip**: Keep the terminal running `ollama serve` open between sessions to avoid reloading.
+
+## CLI Experience (LLM-Style Conversation)
+
+Run: `python run_council.py`
+
+- **Continuous chat** with full history context across multiple turns
+- **Visual chain-of-thought**: see all 4 agents deliberate (Researcher → Critic → Planner → Judge)
+- **Slick colored interface** with clear sections highlighting each agent's contribution
+- **Press Enter** between responses for clean flow
+- **Type 'exit'** to end session
+
+The interactive mode provides a conversational experience where you can build on previous responses. Single-shot mode is still available by passing a prompt as an argument.
 
 ## Council Mode: Bold & Experimental
 

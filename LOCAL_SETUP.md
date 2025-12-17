@@ -74,6 +74,18 @@ This is the optimal configuration for complex, meta, or self-reflective prompts.
 
 ### CLI Interface
 
+**Interactive Mode** (recommended):
+```bash
+python run_council.py
+```
+
+- Continuous chat with full history context
+- Visual chain-of-thought: see all 4 agents deliberate
+- Slick colored interface with clear sections
+- Press Enter between responses for clean flow
+- Type 'exit' to end session
+
+**Single-shot Mode**:
 ```bash
 python run_council.py "Test prompt: What is the capital of France?"
 ```
