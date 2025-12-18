@@ -56,7 +56,7 @@ New message: {user_input}
 
 Respond as the full council deliberation."""
 
-            print("\n\033[1;33mCouncil deliberating... (Researcher → Critic → Planner → Judge)\033[0m\n")
+            print("\n\033[1;33mCouncil deliberating... (Curator → Researcher → Critic → Planner → Judge)\033[0m\n")
 
             result = run_council_sync(full_prompt)
 
@@ -65,14 +65,16 @@ Respond as the full council deliberation."""
                 continue
 
             # Display full chain of thought
-            print("\033[1;35mResearcher (bold exploration):\033[0m")
+            print("\033[1;36mCurator (fast assistant):\033[0m")
             print(result['agents'][0]['output'])
-            print("\n\033[1;31mCritic (contrarian challenge):\033[0m")
+            print("\n\033[1;35mResearcher (bold exploration):\033[0m")
             print(result['agents'][1]['output'])
-            print("\n\033[1;36mPlanner (multi-track strategy):\033[0m")
+            print("\n\033[1;31mCritic (contrarian challenge):\033[0m")
             print(result['agents'][2]['output'])
-            print("\n\033[1;32mJudge (visionary synthesis):\033[0m")
+            print("\n\033[1;36mPlanner (multi-track strategy):\033[0m")
             print(result['agents'][3]['output'])
+            print("\n\033[1;32mJudge (visionary synthesis):\033[0m")
+            print(result['agents'][4]['output'])
 
             print("\n" + "="*60)
             print("\033[1;37mFINAL COUNCIL ANSWER\033[0m")

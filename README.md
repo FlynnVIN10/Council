@@ -1,10 +1,10 @@
-# Local 4-Agent AI Council
+# Local AI Council (5-Agent System)
 
-This project implements a fully local, offline "AI council" with 4 agents running on small, quantized models via Ollama. No cloud APIs or external keys are required. It's optimized for a 2018 MacBook Pro (6-core i7, 16GB RAM, CPU-only).
+This project implements a fully local, offline "AI council" with 5 agents running on small, quantized models via Ollama. No cloud APIs or external keys are required. It's optimized for a 2018 MacBook Pro (6-core i7, 16GB RAM, CPU-only).
 
 ## Features
 
-- **Agents**: Researcher (gathers info/explores), Critic (points out weaknesses), Planner (structures steps), Synthesizer/Judge (combines into final answer).
+- **Agents**: Curator (fast assistant/receptionist), Researcher (gathers info/explores), Critic (points out weaknesses), Planner (structures steps), Synthesizer/Judge (combines into final answer).
 - **Orchestration**: CrewAI for sequential task execution.
 - **API**: FastAPI for HTTP access.
 - **CLI**: Simple terminal interface.
@@ -49,7 +49,7 @@ See `EXAMPLES.md` for sample prompts and outputs.
 Run: `python run_council.py`
 
 - **Continuous chat** with full history context across multiple turns
-- **Visual chain-of-thought**: see all 4 agents deliberate (Researcher → Critic → Planner → Judge)
+- **Visual chain-of-thought**: see all 5 agents deliberate (Curator → Researcher → Critic → Planner → Judge)
 - **Slick colored interface** with clear sections highlighting each agent's contribution
 - **Press Enter** between responses for clean flow
 - **Type 'exit'** to end session
@@ -60,6 +60,15 @@ The interactive mode provides a conversational experience where you can build on
 
 The council is intentionally tuned for radical, high-leverage software engineering growth.
 It prioritizes frontier practices (formal methods, advanced types, property-based testing, AI agents, etc.) and produces portfolios of ambitious experiments rather than single safe recommendations.
+
+## The Curator Agent
+
+The council now begins with the Curator — a fast, engaging assistant who:
+- Greets and clarifies your query
+- Hands off to the full bold council for deep deliberation
+- Provides quick initial feedback while keeping runtime fast
+
+This makes interaction feel more responsive and conversational. The Curator uses a lower token limit (400 tokens) for quick responses, while the full council (Researcher → Critic → Planner → Judge) uses the full token allocation for deep, bold deliberation.
 
 ### Recommended Settings (Bold & Deep Mode)
 

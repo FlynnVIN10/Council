@@ -32,6 +32,8 @@ This downloads ~2.3 GB once. It's fast and capable on CPU – perfect for your h
 
 **Note**: Uses direct LiteLLM calls to Ollama for reliable performance on CPU (bypasses CrewAI integration issues).
 
+**The Curator Agent**: The council begins with the Curator — a fast assistant who greets, clarifies queries, and hands off to the full council for deep deliberation. This makes interactions feel more responsive and conversational.
+
 ## Performance Expectations on 2018 MacBook Pro (CPU-only)
 
 - **First council run: 2–5 minutes**  

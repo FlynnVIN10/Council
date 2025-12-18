@@ -50,9 +50,30 @@ def run_council_sync(prompt: str, previous_proposal: dict = None) -> dict:
         except Exception as e:
             return {"error": f"Execution failed: {str(e)}"}
     
-    # Researcher agent
+    # Curator agent (fast receptionist/assistant)
     print("Starting council – loading model (first run only, please wait)...")
-    print("\nRunning Researcher (bold exploration)...")
+    print("\nRunning Curator (fast assistant)...")
+    curator_prompt = f"""You are the Curator — a fast, witty, knowledgeable assistant (inspired by the Curator from Ready Player One).
+Your role:
+- Greet the user warmly
+- Quickly understand and clarify/refine the query if ambiguous
+- Summarize the intent concisely
+- Hand off to the full council for deep, bold deliberation
+Keep your response short and engaging (target ~150-300 tokens max).
+Never give the final answer yourself — always pass to the council.
+Prompt: {prompt}"""
+    
+    try:
+        curator_output = ollama_completion(
+            [{"role": "user", "content": curator_prompt}],
+            max_tokens=400  # Fast response for Curator
+        )
+        print(f"Curator complete: {len(curator_output)} chars\n")
+    except Exception as e:
+        return {"error": f"Curator failed: {str(e)}"}
+    
+    # Researcher agent
+    print("Running Researcher (bold exploration)...")
     
     if is_self_improve_mode:
         researcher_prompt = f"""You are the Researcher agent analyzing the Council codebase for self-improvement.
@@ -259,6 +280,7 @@ Now synthesize a complete 4-item portfolio."""
             final_answer += "\n" + "\n".join(fallback_lines)
 
     agents_outputs = [
+        {"name": "Curator", "output": curator_output},
         {"name": "Researcher", "output": research_output},
         {"name": "Critic", "output": critic_output},
         {"name": "Planner", "output": planner_output},
