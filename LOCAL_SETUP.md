@@ -60,11 +60,11 @@ cp .env.example .env
 
 ```
 LLM_TEMPERATURE=1.0
-LLM_MAX_TOKENS=5000    # ~15–18 minute full council runs on CPU-only hardware
-                       # Enables maximum visionary depth without fallback or cutoff
+LLM_MAX_TOKENS=3700    # ~12 minute full council runs on CPU-only hardware
+                       # Provides deep, untruncated outputs with acceptable wait time
 ```
 
-This is the optimal configuration for complex, meta, or self-reflective prompts. The council delivers complete, elaborate outputs at this level.
+This is the recommended configuration for daily use with complex or meta prompts.
 
 **That's it – setup complete!**
 
@@ -123,7 +123,7 @@ ollama serve
 ## Troubleshooting
 
 - **If Ollama not responding**: Ensure `ollama serve` is running in a separate terminal.
-- **Timeouts**: Ensure `LLM_MAX_TOKENS=5000` in `.env` for complete responses (recommended setting).
+- **Timeouts**: Ensure `LLM_MAX_TOKENS=3700` in `.env` for complete responses (recommended setting).
 - **RAM issues**: Close other apps; use smaller model (phi3:mini).
 - **No external calls**: Project uses dummy/no keys; verify with network monitor.
 
