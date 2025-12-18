@@ -63,12 +63,19 @@ It prioritizes frontier practices (formal methods, advanced types, property-base
 
 ## The Curator Agent
 
-The council now begins with the Curator — a fast, engaging assistant who:
-- Greets and clarifies your query
-- Hands off to the full bold council for deep deliberation
-- Provides quick initial feedback while keeping runtime fast
+The council begins with the Curator — a fast, engaging assistant who:
+- Greets and clarifies your query through quick conversation
+- Refines your query to ensure clarity and power
+- Asks for confirmation before starting the full ~12-minute council deliberation
+- Provides quick initial feedback while keeping the experience responsive
 
-This makes interaction feel more responsive and conversational. The Curator uses a lower token limit (400 tokens) for quick responses, while the full council (Researcher → Critic → Planner → Judge) uses the full token allocation for deep, bold deliberation.
+**Interaction Flow**:
+1. You ask a question or make a request
+2. Curator responds quickly, refining and clarifying as needed
+3. When the query is ready, Curator asks: "Are you ready for the full council deliberation? (yes/no)"
+4. Reply "yes" to proceed with full deliberation, or "no" to continue refining with Curator
+
+This gives you full control and prevents unwanted long runs. The Curator uses a lower token limit (400 tokens) for quick responses, while the full council (Researcher → Critic → Planner → Judge) uses the full token allocation for deep, bold deliberation.
 
 ### Recommended Settings (Bold & Deep Mode)
 

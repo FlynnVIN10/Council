@@ -1,6 +1,6 @@
 import os
 import sys
-from src.council import run_council_sync
+from src.council import run_council_sync, run_curator_only
 
 def print_header():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -14,8 +14,10 @@ def interactive_mode():
     print_header()
     print("Council is ready. Ask away!\n")
 
-    history = []  # List of {"role": "user"/"assistant", "content": "..."} for context
+    curator_history = []  # Conversation history with Curator only
     last_proposal = None  # Store last self-improvement proposal
+    waiting_for_confirmation = False  # Track if we're waiting for yes/no
+    refined_query = None  # Store refined query when Curator asks for confirmation
 
     while True:
         try:
@@ -28,7 +30,7 @@ def interactive_mode():
                 print("\n\033[1;32mCouncil session ended. Goodbye!\033[0m")
                 break
 
-            # Handle approval
+            # Handle approval for self-improvement
             if user_input.lower() == "approved. proceed" and last_proposal:
                 print("\n\033[1;33mExecuting approved proposal...\033[0m\n")
                 result = run_council_sync("Approved. Proceed", previous_proposal=last_proposal)
@@ -42,23 +44,92 @@ def interactive_mode():
                 print("\n" + "-"*60)
                 input("\033[1;34mPress Enter for next message...\033[0m")
                 print_header()
+                curator_history = []  # Reset curator conversation
+                waiting_for_confirmation = False
                 continue
 
-            # Build contextual prompt
-            context = "\n".join([
-                f"{'You' if msg['role']=='user' else 'Council Final Answer'}: {msg['content']}"
-                for msg in history[-8:]  # Last 4 exchanges
-            ])
-            full_prompt = f"""Previous conversation summary:
-{context}
-
-New message: {user_input}
-
-Respond as the full council deliberation."""
-
-            print("\n\033[1;33mCouncil deliberating... (Curator → Researcher → Critic → Planner → Judge)\033[0m\n")
-
-            result = run_council_sync(full_prompt)
+            # Handle confirmation response
+            if waiting_for_confirmation:
+                if user_input.lower() in {"yes", "y"}:
+                    # Run full council with refined query
+                    query_to_use = refined_query if refined_query else user_input
+                    print("\n\033[1;33mStarting full council deliberation...\033[0m\n")
+                    result = run_council_sync(query_to_use, skip_curator=True)
+                    waiting_for_confirmation = False
+                    refined_query = None
+                    curator_history = []  # Reset after full council run
+                    
+                    # Continue to display full council results below
+                else:
+                    # Continue conversation with Curator
+                    curator_history.append({"role": "user", "content": user_input})
+                    curator_result = run_curator_only(user_input, curator_history)
+                    if "error" in curator_result:
+                        print(f"\n\033[1;31mError: {curator_result['error']}\033[0m")
+                        continue
+                    
+                    print("\033[1;36mCurator (fast assistant):\033[0m")
+                    print(curator_result['output'])
+                    
+                    curator_history.append({"role": "assistant", "content": curator_result['output']})
+                    
+                    if curator_result.get("asking_confirmation"):
+                        waiting_for_confirmation = True
+                        # Try to extract refined query from Curator output
+                        output = curator_result['output']
+                        if "refined query ready:" in output.lower():
+                            parts = output.split("refined query ready:", 1)
+                            if len(parts) > 1:
+                                refined_query = parts[1].split("\n")[0].strip().strip('"').strip("'")
+                        if not refined_query:
+                            refined_query = user_input  # Fallback to original
+                    else:
+                        waiting_for_confirmation = False
+                    
+                    print("\n" + "-"*60)
+                    input("\033[1;34mPress Enter for next message...\033[0m")
+                    print_header()
+                    continue
+            else:
+                # Normal flow: Run Curator first
+                print("\n\033[1;33mCurator engaging...\033[0m\n")
+                curator_history.append({"role": "user", "content": user_input})
+                curator_result = run_curator_only(user_input, curator_history)
+                
+                if "error" in curator_result:
+                    print(f"\n\033[1;31mError: {curator_result['error']}\033[0m")
+                    continue
+                
+                print("\033[1;36mCurator (fast assistant):\033[0m")
+                print(curator_result['output'])
+                
+                curator_history.append({"role": "assistant", "content": curator_result['output']})
+                
+                # Check if Curator is asking for confirmation
+                if curator_result.get("asking_confirmation"):
+                    waiting_for_confirmation = True
+                    # Try to extract refined query from Curator output
+                    output = curator_result['output']
+                    if "refined query ready:" in output.lower():
+                        parts = output.split("refined query ready:", 1)
+                        if len(parts) > 1:
+                            refined_query = parts[1].split("\n")[0].strip().strip('"').strip("'")
+                    if not refined_query:
+                        refined_query = user_input  # Fallback to original
+                    
+                    print("\n" + "-"*60)
+                    continue  # Wait for user's yes/no response
+                else:
+                    # Curator is still refining, continue conversation
+                    print("\n" + "-"*60)
+                    input("\033[1;34mPress Enter for next message...\033[0m")
+                    print_header()
+                    continue
+            
+            # Full council results display (only reached after "yes" confirmation)
+            if "error" in result:
+                print(f"\n\033[1;31mError: {result['error']}\033[0m")
+                continue
 
             if "error" in result:
                 print(f"\n\033[1;31mError: {result['error']}\033[0m")

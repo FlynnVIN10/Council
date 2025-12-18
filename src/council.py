@@ -3,10 +3,68 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from src.ollama_llm import ollama_completion
 
-def run_council_sync(prompt: str, previous_proposal: dict = None) -> dict:
+def run_curator_only(prompt: str, conversation_history: list = None) -> dict:
+    """
+    Run only the Curator agent for fast, conversational query refinement.
+    Returns Curator output and whether it's asking for confirmation.
+    """
+    if conversation_history is None:
+        conversation_history = []
+    
+    # Build context from conversation history
+    context = ""
+    if conversation_history:
+        context = "\n".join([
+            f"{'You' if msg['role']=='user' else 'Curator'}: {msg['content']}"
+            for msg in conversation_history[-6:]  # Last 3 exchanges
+        ]) + "\n\n"
+    
+    curator_prompt = f"""You are the Curator — a fast, witty, knowledgeable assistant (inspired by the Curator from Ready Player One).
+Your role:
+- Greet the user warmly
+- Quickly understand and clarify/refine the query if ambiguous
+- Engage in natural conversation to refine the intent
+- When you believe the query is clear and powerful, present the refined version and ask:
+  "I have a refined query ready: '[refined query]'
+  
+  Are you ready for the full council deliberation? (yes/no)"
+
+Keep your response short and engaging (target ~150-300 tokens max).
+Never give the final answer yourself — always pass to the council.
+
+Previous conversation:
+{context}New message: {prompt}"""
+    
+    try:
+        curator_output = ollama_completion(
+            [{"role": "user", "content": curator_prompt}],
+            max_tokens=400  # Fast response for Curator
+        )
+        
+        # Check if Curator is asking for confirmation
+        asking_confirmation = (
+            "ready for the full council" in curator_output.lower() or
+            "full council deliberation" in curator_output.lower() or
+            "(yes/no)" in curator_output.lower()
+        )
+        
+        return {
+            "output": curator_output,
+            "asking_confirmation": asking_confirmation,
+            "prompt": prompt
+        }
+    except Exception as e:
+        return {"error": f"Curator failed: {str(e)}"}
+
+def run_council_sync(prompt: str, previous_proposal: dict = None, skip_curator: bool = False) -> dict:
     """
     Run the council with sequential agent calls using direct LiteLLM.
     Bypasses CrewAI's problematic LLM routing while maintaining the council pattern.
+    
+    Args:
+        prompt: The user's prompt or refined query
+        previous_proposal: For self-improvement mode execution
+        skip_curator: If True, skip Curator and run full council directly
     """
     print(f"Running council with prompt: {prompt}\n")
     
@@ -50,27 +108,33 @@ def run_council_sync(prompt: str, previous_proposal: dict = None) -> dict:
         except Exception as e:
             return {"error": f"Execution failed: {str(e)}"}
     
-    # Curator agent (fast receptionist/assistant)
-    print("Starting council – loading model (first run only, please wait)...")
-    print("\nRunning Curator (fast assistant)...")
-    curator_prompt = f"""You are the Curator — a fast, witty, knowledgeable assistant (inspired by the Curator from Ready Player One).
+    # Curator agent (fast receptionist/assistant) - only if not skipped
+    curator_output = ""
+    if not skip_curator:
+        print("Starting council – loading model (first run only, please wait)...")
+        print("\nRunning Curator (fast assistant)...")
+        curator_prompt = f"""You are the Curator — a fast, witty, knowledgeable assistant (inspired by the Curator from Ready Player One).
 Your role:
-- Greet the user warmly
+- Greet the user warmly  
 - Quickly understand and clarify/refine the query if ambiguous
 - Summarize the intent concisely
 - Hand off to the full council for deep, bold deliberation
 Keep your response short and engaging (target ~150-300 tokens max).
 Never give the final answer yourself — always pass to the council.
 Prompt: {prompt}"""
-    
-    try:
-        curator_output = ollama_completion(
-            [{"role": "user", "content": curator_prompt}],
-            max_tokens=400  # Fast response for Curator
-        )
-        print(f"Curator complete: {len(curator_output)} chars\n")
-    except Exception as e:
-        return {"error": f"Curator failed: {str(e)}"}
+        
+        try:
+            curator_output = ollama_completion(
+                [{"role": "user", "content": curator_prompt}],
+                max_tokens=400  # Fast response for Curator
+            )
+            print(f"Curator complete: {len(curator_output)} chars\n")
+        except Exception as e:
+            return {"error": f"Curator failed: {str(e)}"}
+    else:
+        # When skipping Curator (after confirmation), show a message
+        curator_output = f"Curator: Understood. Deliberation beginning with refined query: {prompt}"
+        print("Starting full council deliberation...\n")
     
     # Researcher agent
     print("Running Researcher (bold exploration)...")
