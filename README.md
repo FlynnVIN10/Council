@@ -78,6 +78,33 @@ LLM_MAX_TOKENS=5000    # ~15–18 minute full council runs on CPU-only hardware
 With `LLM_MAX_TOKENS=5000`, complex/meta prompts produce near-complete native 4-item portfolios with rich elaboration (~15–18 min runs).
 Occasional partial truncation on item #4 is normal for phi3:mini — fallback ensures structure.
 
+## Self-Improvement Mode
+
+Trigger with: `"Council, enter Self-Improvement Mode"` or include `"self-improve"` in your prompt.
+
+The Council will:
+- **Analyze its own codebase** — examine structure, identify improvement opportunities
+- **Propose one high-leverage improvement** — with concrete code changes
+- **Wait for approval** — present the proposal with file changes, impact, and rollback instructions
+
+**To approve and execute**: Type `"Approved. Proceed"` after reviewing the proposal.
+
+**Safety features**:
+- All changes are made on a safe branch: `self-improve/proposal-<timestamp>`
+- No destructive actions (no file deletion, no main branch changes)
+- Complete rollback instructions included
+- Full diffs shown before and after execution
+
+**Example flow**:
+1. Trigger: `"Council, enter Self-Improvement Mode and analyze how to improve error handling"`
+2. Review the proposal (files to change, impact, rollback plan)
+3. Approve: `"Approved. Proceed"`
+4. Changes are applied and committed to the proposal branch
+5. Review with `git diff main self-improve/proposal-XXX`
+6. Merge when satisfied or rollback with `git checkout main && git branch -D self-improve/proposal-XXX`
+
+This turns the Council into a true self-evolving system under human oversight.
+
 ### Success Example: Meta-Cognitive Self-Improvement
 
 The council demonstrated true meta-cognition by analyzing and proposing radical improvements to its own codebase. When asked to self-improve, it produced a diverse 4-item portfolio of bold recommendations:

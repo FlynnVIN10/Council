@@ -15,6 +15,7 @@ def interactive_mode():
     print("Council is ready. Ask away!\n")
 
     history = []  # List of {"role": "user"/"assistant", "content": "..."} for context
+    last_proposal = None  # Store last self-improvement proposal
 
     while True:
         try:
@@ -26,6 +27,22 @@ def interactive_mode():
             if user_input.lower() in {"exit", "quit"}:
                 print("\n\033[1;32mCouncil session ended. Goodbye!\033[0m")
                 break
+
+            # Handle approval
+            if user_input.lower() == "approved. proceed" and last_proposal:
+                print("\n\033[1;33mExecuting approved proposal...\033[0m\n")
+                result = run_council_sync("Approved. Proceed", previous_proposal=last_proposal)
+                if "error" in result:
+                    print(f"\n\033[1;31mError: {result['error']}\033[0m")
+                elif result.get("executed"):
+                    print(f"\n\033[1;32m✓ {result.get('message', 'Proposal executed')}\033[0m")
+                    if "branch" in result:
+                        print(f"Branch: {result['branch']}\n")
+                last_proposal = None  # Clear after execution
+                print("\n" + "-"*60)
+                input("\033[1;34mPress Enter for next message...\033[0m")
+                print_header()
+                continue
 
             # Build contextual prompt
             context = "\n".join([
@@ -63,6 +80,22 @@ Respond as the full council deliberation."""
             print(result['final_answer'])
             print("\n\033[1;37mREASONING SUMMARY\033[0m")
             print(result['reasoning_summary'])
+
+            # Handle self-improvement proposal
+            if result.get("is_self_improve") and "proposal" in result:
+                last_proposal = result["proposal"]
+                print("\n" + "="*60)
+                print("\033[1;33m🔧 SELF-IMPROVEMENT PROPOSAL GENERATED\033[0m")
+                print("="*60)
+                if "description" in last_proposal:
+                    print(f"\n\033[1;36mProposal:\033[0m {last_proposal['description']}")
+                if "file_changes" in last_proposal:
+                    print(f"\n\033[1;36mFiles to modify:\033[0m {', '.join(last_proposal['file_changes'].keys())}")
+                if "impact" in last_proposal:
+                    print(f"\n\033[1;36mExpected Impact:\033[0m {last_proposal['impact']}")
+                print("\n\033[1;33mTo approve and execute, type: 'Approved. Proceed'\033[0m")
+            else:
+                last_proposal = None
 
             # Update history
             history.append({"role": "user", "content": user_input})

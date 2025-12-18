@@ -3,17 +3,74 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from src.ollama_llm import ollama_completion
 
-def run_council_sync(prompt: str) -> dict:
+def run_council_sync(prompt: str, previous_proposal: dict = None) -> dict:
     """
     Run the council with sequential agent calls using direct LiteLLM.
     Bypasses CrewAI's problematic LLM routing while maintaining the council pattern.
     """
     print(f"Running council with prompt: {prompt}\n")
     
+    # Detect self-improvement mode
+    is_self_improve_mode = "self-improvement mode" in prompt.lower() or "self-improve" in prompt.lower()
+    
+    # Handle approval execution (only if previous_proposal is provided, indicating intentional approval)
+    if previous_proposal and "approved" in prompt.lower() and "proceed" in prompt.lower():
+        try:
+            from src.self_improve import create_proposal_branch, apply_changes, commit_changes, get_current_branch
+            
+            print("\033[1;33mExecuting approved proposal...\033[0m\n")
+            branch = create_proposal_branch()
+            print(f"Created branch: {branch}\n")
+            
+            # Apply file changes
+            file_changes = previous_proposal.get("file_changes", {})
+            diffs = apply_changes(file_changes)
+            
+            # Show diffs
+            print("\033[1;36mChanges applied:\033[0m")
+            for file_path, diff in diffs.items():
+                print(f"\n--- {file_path} ---")
+                print(diff)
+            
+            # Commit
+            commit_msg = f"Self-improvement: {previous_proposal.get('description', 'Codebase enhancement')}"
+            commit_changes(commit_msg)
+            
+            print(f"\n\033[1;32m✓ Proposal executed successfully on branch: {branch}\033[0m")
+            print(f"\nTo merge: git checkout main && git merge {branch}")
+            print(f"To review: git diff main {branch}")
+            print(f"To rollback: git checkout main && git branch -D {branch}\n")
+            
+            return {
+                "prompt": prompt,
+                "executed": True,
+                "branch": branch,
+                "message": "Proposal executed successfully"
+            }
+        except Exception as e:
+            return {"error": f"Execution failed: {str(e)}"}
+    
     # Researcher agent
     print("Starting council – loading model (first run only, please wait)...")
     print("\nRunning Researcher (bold exploration)...")
-    researcher_prompt = f"""You are the Researcher agent — a bold, visionary explorer of advanced software engineering practices.
+    
+    if is_self_improve_mode:
+        researcher_prompt = f"""You are the Researcher agent analyzing the Council codebase for self-improvement.
+Your task: Examine the codebase structure, identify concrete improvement opportunities, and analyze what high-leverage changes would enhance the Council's capabilities.
+
+Focus on:
+- Code organization and structure
+- Performance bottlenecks
+- Error handling and robustness
+- Extensibility and modularity
+- Testing and verification gaps
+- Advanced features that could be added
+
+Review the codebase context and propose ONE specific, concrete improvement with high impact.
+Prompt: {prompt}
+Provide detailed analysis of the improvement opportunity."""
+    else:
+        researcher_prompt = f"""You are the Researcher agent — a bold, visionary explorer of advanced software engineering practices.
 Go beyond mainstream advice and uncover cutting-edge, unconventional, experimental, or research-level techniques with high potential impact.
 Draw from academic papers, niche tools, and elite teams (Jane Street, DeepMind, NASA, seL4, etc.).
 Prioritize ideas that are underused, complex, or not widely adopted but could yield breakthroughs in correctness, expressiveness, or robustness.
@@ -39,7 +96,15 @@ Provide detailed reasoning, examples, risks, and rewards."""
 
     # Critic agent
     print("Running Critic (contrarian challenge)...")
-    critic_prompt = f"""You are the Critic agent — a ruthless contrarian who rejects incremental, safe, or conventional improvements.
+    if is_self_improve_mode:
+        critic_prompt = f"""You are the Critic agent reviewing the Researcher's codebase improvement proposal.
+Your task: Challenge the proposal rigorously. Is it high-leverage enough? Could it be bolder? Are there risks or edge cases?
+Push for more ambitious improvements if the proposal is too incremental.
+Research input: {research_output}
+Prompt: {prompt}
+Provide sharp critique and demand more impact if needed."""
+    else:
+        critic_prompt = f"""You are the Critic agent — a ruthless contrarian who rejects incremental, safe, or conventional improvements.
 If the Researcher includes anything resembling mainstream advice, aggressively dismiss it as insufficient for dramatic growth.
 Demand radically higher-leverage alternatives, even if they are harder, less proven, or considered overkill by most developers.
 Never accept narrowing to a single idea — insist on a portfolio of bold experiments.
@@ -56,7 +121,20 @@ Output sharp, focused critique that forces greater ambition."""
 
     # Planner agent
     print("Running Planner (multi-track strategy)...")
-    planner_prompt = f"""You are the Planner agent — a pragmatic strategist for high-ambition experiments.
+    if is_self_improve_mode:
+        planner_prompt = f"""You are the Planner agent structuring the codebase improvement proposal.
+Your task: Turn the improvement idea into a concrete implementation plan with specific file changes.
+Specify:
+- Which files need to be modified
+- What changes are needed (be specific)
+- Dependencies or prerequisites
+- Testing approach
+Research: {research_output}
+Critic: {critic_output}
+Prompt: {prompt}
+Output a detailed implementation plan with file-level specificity."""
+    else:
+        planner_prompt = f"""You are the Planner agent — a pragmatic strategist for high-ambition experiments.
 Turn the bold ideas from Researcher and Critic into a portfolio of concurrent or phased personal experiments (aim for 3–5 parallel tracks, not one).
 Make each track concrete: tools, learning resources, small pilot projects, success metrics, and risk mitigations.
 Emphasize parallel exploration to maximize learning velocity.
@@ -73,7 +151,38 @@ Output a clear, numbered multi-track action plan with timelines."""
 
     # Judge/Synthesizer agent
     print("Running Judge (visionary synthesis)...\n")
-    judge_prompt = f"""You are the Judge/Synthesizer — a radical visionary obsessed with 10x transformation.
+    if is_self_improve_mode:
+        judge_prompt = f"""You are the Judge/Synthesizer creating a formal self-improvement proposal for the Council codebase.
+
+Your task: Synthesize the analysis into ONE high-leverage, concrete improvement with executable code changes.
+
+Required structure — follow EXACTLY:
+Final Answer:
+PROPOSAL: [Clear one-sentence description of the improvement]
+
+FILES_TO_CHANGE:
+[File path 1]:
+[Complete new content for file 1 - include full file content, not just diffs]
+
+[File path 2]:
+[Complete new content for file 2 if applicable]
+
+IMPACT: [Expected impact and benefits]
+
+ROLLBACK: [How to rollback if needed - e.g., git checkout main && git branch -D self-improve/proposal-XXX]
+
+Rationale: [Detailed explanation of why this improvement is high-leverage, synergies, risks, and transformative potential. Max 400 words.]
+
+IMPORTANT: Provide complete file contents, not partial code. If modifying existing files, include the full modified file content.
+
+Researcher: {research_output}
+Critic: {critic_output}
+Planner: {planner_output}
+Prompt: {prompt}
+
+Awaiting human approval: reply 'Approved. Proceed' to execute."""
+    else:
+        judge_prompt = f"""You are the Judge/Synthesizer — a radical visionary obsessed with 10x transformation.
 NON-NEGOTIABLE RULES:
 - You MUST output EXACTLY 4 numbered bold recommendations. No more, no less.
 - Never converge on fewer than 4.
@@ -156,12 +265,69 @@ Now synthesize a complete 4-item portfolio."""
         {"name": "Judge", "output": judge_output}
     ]
 
-    return {
+    result = {
         "prompt": prompt,
         "agents": agents_outputs,
         "final_answer": final_answer,
         "reasoning_summary": reasoning_summary
     }
+
+    # Parse self-improvement proposal if in self-improve mode
+    if is_self_improve_mode:
+        proposal_data = {}
+        try:
+            if "PROPOSAL:" in judge_output:
+                proposal_data["description"] = judge_output.split("PROPOSAL:")[1].split("\n")[0].strip()
+            
+            # Parse file changes
+            file_changes = {}
+            if "FILES_TO_CHANGE:" in judge_output:
+                files_section = judge_output.split("FILES_TO_CHANGE:")[1]
+                if "IMPACT:" in files_section:
+                    files_section = files_section.split("IMPACT:")[0]
+                
+                # Try to extract file paths and contents
+                lines = files_section.split("\n")
+                current_file = None
+                current_content = []
+                in_file_content = False
+                
+                for line in lines:
+                    # Detect file path (looks like a path)
+                    if (line.strip().endswith((".py", ".md", ".txt", ".yaml", ".yml", ".json")) or 
+                        ("/" in line and line.strip().startswith(("src/", "test/", "scripts/")))):
+                        if current_file and current_content:
+                            file_changes[current_file] = "\n".join(current_content).strip()
+                        current_file = line.strip().rstrip(":")
+                        current_content = []
+                        in_file_content = True
+                    elif in_file_content and current_file:
+                        current_content.append(line)
+                
+                if current_file and current_content:
+                    file_changes[current_file] = "\n".join(current_content).strip()
+                
+                proposal_data["file_changes"] = file_changes
+            
+            if "IMPACT:" in judge_output:
+                impact_section = judge_output.split("IMPACT:")[1]
+                if "ROLLBACK:" in impact_section:
+                    impact_section = impact_section.split("ROLLBACK:")[0]
+                proposal_data["impact"] = impact_section.strip()
+            
+            if "ROLLBACK:" in judge_output:
+                rollback_section = judge_output.split("ROLLBACK:")[1]
+                if "Rationale:" in rollback_section:
+                    rollback_section = rollback_section.split("Rationale:")[0]
+                proposal_data["rollback"] = rollback_section.strip()
+            
+            result["proposal"] = proposal_data
+            result["is_self_improve"] = True
+        except Exception as e:
+            # If parsing fails, still return the result but log the error
+            result["proposal_parse_error"] = str(e)
+
+    return result
 
 async def run_council_async(prompt: str) -> dict:
     loop = asyncio.get_running_loop()
