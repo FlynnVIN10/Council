@@ -73,6 +73,11 @@ LLM_MAX_TOKENS=5000    # ~15–18 minute full council runs on CPU-only hardware
 
 **Note**: This is the optimal configuration for complex, meta, or self-reflective prompts. The council delivers complete, elaborate outputs at this level.
 
+### Performance Reality
+
+With `LLM_MAX_TOKENS=5000`, complex/meta prompts produce near-complete native 4-item portfolios with rich elaboration (~15–18 min runs).
+Occasional partial truncation on item #4 is normal for phi3:mini — fallback ensures structure.
+
 ### Success Example: Meta-Cognitive Self-Improvement
 
 The council demonstrated true meta-cognition by analyzing and proposing radical improvements to its own codebase. When asked to self-improve, it produced a diverse 4-item portfolio of bold recommendations:

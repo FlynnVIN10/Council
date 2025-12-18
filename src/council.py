@@ -125,16 +125,29 @@ Now synthesize a complete 4-item portfolio."""
         final_answer = judge_output
         reasoning_summary = "Consensus reached from council deliberation"
     
+    # Clean up final_answer: remove any "Final Answer:" prefix if present
+    if final_answer.startswith("Final Answer:"):
+        final_answer = final_answer.replace("Final Answer:", "", 1).strip()
+    
     # Post-processing: Ensure exactly 4 numbered items (enforce portfolio requirement)
     numbered_items = re.findall(r'^\d+\.\s', final_answer, re.MULTILINE)
     if len(numbered_items) < 4:
-        fallback = """
-[Fallback: Enforcing bold portfolio requirement]
-1. Property-based testing with Hypothesis/QuickCheck for invariant discovery
-2. Selective formal verification of critical paths using Lean/Coq
-3. Local AI agent as automated code critic and refactor assistant
-4. Experiment with refinement/dependent types in key modules"""
-        final_answer += fallback
+        missing = 4 - len(numbered_items)
+        fallback_items = [
+            "Property-based testing with Hypothesis/QuickCheck for invariant discovery",
+            "Selective formal verification of critical paths using Lean/Coq",
+            "Local AI agent as automated code critic and refactor assistant",
+            "Experiment with refinement/dependent types in key modules"
+        ]
+        # Only append missing items, starting from the next number
+        start_num = len(numbered_items) + 1
+        fallback_lines = []
+        for i in range(missing):
+            num = start_num + i
+            item = fallback_items[i] if i < len(fallback_items) else fallback_items[-1]
+            fallback_lines.append(f"{num}. {item}")
+        if fallback_lines:
+            final_answer += "\n" + "\n".join(fallback_lines)
 
     agents_outputs = [
         {"name": "Researcher", "output": research_output},
