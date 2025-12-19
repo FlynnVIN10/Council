@@ -12,14 +12,22 @@ echo "                         THE COUNCIL"
 echo "================================================================="
 echo ""
 
-echo "Stopping existing processes...COMPLETE"
+echo "Stopping existing Ollama processes..."
 pkill -f "ollama serve" || true
-pkill -f "uvicorn" || true
-sleep 2
+
+echo "Aggressively stopping existing uvicorn processes..."
+pkill -9 -f "uvicorn" || true
+sleep 3   # Give OS time to release port 8000
 
 echo "Starting...COMPLETE"
 nohup ollama serve > ollama.log 2>&1 &
 sleep 8
+
+echo "Checking if port 8000 is free..."
+while lsof -i :8000 > /dev/null 2>&1; do
+    echo "Waiting for port 8000 to free..."
+    sleep 1
+done
 
 echo "Activating environment...COMPLETE"
 source venv/bin/activate
