@@ -1,5 +1,6 @@
 import asyncio
 import re
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from src.ollama_llm import ollama_completion
 
@@ -100,7 +101,16 @@ def run_council_sync(prompt: str, previous_proposal: dict = None, skip_curator: 
             
             # Apply file changes
             file_changes = previous_proposal.get("file_changes", {})
+            if not file_changes:
+                return {"error": "No file changes in proposal — nothing to execute"}
+            
             diffs = apply_changes(file_changes)
+            
+            # Check if there are actual git changes before committing
+            status_result = subprocess.run(["git", "status", "--porcelain"], 
+                                         check=True, capture_output=True, text=True)
+            if not status_result.stdout.strip():
+                return {"error": "No actual changes detected after applying proposal. The proposal may have contained placeholder or identical code."}
             
             # Show diffs
             print("\033[1;36mChanges applied:\033[0m")
@@ -124,7 +134,13 @@ def run_council_sync(prompt: str, previous_proposal: dict = None, skip_curator: 
                 "message": "Proposal executed successfully"
             }
         except Exception as e:
-            return {"error": f"Execution failed: {str(e)}"}
+            error_msg = str(e)
+            print(f"\n\033[1;31mExecution failed: {error_msg}\033[0m")
+            print(f"\n\033[1;33mSuggestions:\033[0m")
+            print(f"1. Review the branch: git status")
+            print(f"2. Check what was changed: git diff")
+            print(f"3. If needed, rollback: git checkout main && git branch -D {get_current_branch() or 'self-improve/proposal-XXX'}")
+            return {"error": f"Execution failed: {error_msg}"}
     
     # Curator agent (fast receptionist/assistant) - only if not skipped
     curator_output = ""
@@ -277,16 +293,23 @@ Output a clear, numbered multi-track action plan with timelines."""
 
 Your task: Synthesize the analysis into ONE high-leverage, concrete improvement with executable code changes.
 
+CRITICAL REQUIREMENTS FOR FILE CONTENTS:
+- FULL, complete, syntactically correct new file contents must be provided — NO "not shown", "placeholder", "TODO", or "implementation omitted" allowed
+- Code must be ready to execute — no incomplete functions, missing imports, or placeholder logic
+- If modifying existing files, provide the COMPLETE file content with all changes integrated
+- If adding new files, provide the ENTIRE file content from first line to last line
+- All imports, function definitions, class definitions, and logic must be complete and valid
+
 Required structure — follow EXACTLY:
 Final Answer:
 PROPOSAL: [Clear one-sentence description of the improvement]
 
 FILES_TO_CHANGE:
 [File path 1]:
-[Complete new content for file 1 - include full file content, not just diffs]
+[Complete new content for file 1 - FULL file content, no placeholders, no "not shown here"]
 
 [File path 2]:
-[Complete new content for file 2 if applicable]
+[Complete new content for file 2 if applicable - FULL file content]
 
 IMPACT: [Expected impact and benefits]
 
