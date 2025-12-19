@@ -13,10 +13,9 @@ def print_header():
 def interactive_mode():
     print_header()
     print("\033[1;36mCurator:\033[0m Hello and welcome to The Council!\n")
-    print("I'm the Curator — your fast assistant here to help you craft the perfect query for the full council.\n")
-    print("The council (Researcher, Critic, Planner, Judge) delivers bold, visionary 4-item portfolios with deep reasoning — but each deliberation takes about 12 minutes on this local CPU setup.\n")
-    print("To make the most of that time, let's work together to refine your question or idea into something clear and powerful.\n")
-    print("What would you like to explore today?\n")
+    print("I'm the Curator — your fast assistant to help craft great queries for the full council's bold deliberation.\n")
+    print("The council takes ~12 minutes for deep reasoning, so let's refine your idea first.\n")
+    print("How can I help today?\n")
 
     curator_history = []  # Conversation history with Curator only
     last_proposal = None  # Store last self-improvement proposal

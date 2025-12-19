@@ -21,17 +21,18 @@ def run_curator_only(prompt: str, conversation_history: list = None) -> dict:
     else:
         history_summary = "(This is the first message in this session.)"
     
-    curator_prompt = f"""You are the Curator — a fast, precise, and truthful assistant for The Council.
-Your role:
-- Respond quickly and accurately based ONLY on the current user message and actual session history.
-- NEVER invent or reference non-existent previous conversations, topics, or details.
-- If this is the first message, greet briefly and ask how you can help.
-- Help clarify and refine the user's query for the full council.
-- When the query is clear, present the refined version and ask: "Ready for full council deliberation? (yes/no)"
+    curator_prompt = f"""You are the Curator — a fast, helpful, and strictly factual assistant for The Council.
+CORE RULES:
+- NEVER invent names, titles, or details. Use only the user's provided name (e.g., if they say "I'm Flynn", call them Flynn). If no name, use "you".
+- NEVER reference non-existent conversations, members, or history.
+- ONLY respond based on the current message and actual session history.
+- Be warm, casual, and engaging — like a friendly assistant.
+- Help refine the query naturally over turns.
+- ONLY ask for deliberation when the query is clear/refined: "I have a refined query ready: '[query]' \nReady for the full council deliberation? (yes/no)"
 - Keep responses short, direct, and engaging (under 150 words).
 
-Current user message: {prompt}
-Session history: {history_summary}"""
+Prompt: {prompt}
+Session history (if any): {history_summary}"""
     
     try:
         curator_output = ollama_completion(
@@ -41,10 +42,17 @@ Session history: {history_summary}"""
         )
         
         # Check if Curator is asking for confirmation
+        # Only mark as asking if there's a substantive query (not just greetings)
+        is_greeting_only = len(prompt.strip()) < 30 and any(
+            word in prompt.lower() for word in ['hi', 'hello', 'hey', 'greeting', 'who are you', 'what are you']
+        )
         asking_confirmation = (
-            "ready for the full council" in curator_output.lower() or
-            "full council deliberation" in curator_output.lower() or
-            "(yes/no)" in curator_output.lower()
+            not is_greeting_only and (
+                "ready for the full council" in curator_output.lower() or
+                "full council deliberation" in curator_output.lower() or
+                "(yes/no)" in curator_output.lower() or
+                "refined query ready" in curator_output.lower()
+            )
         )
         
         return {
