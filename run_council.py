@@ -33,11 +33,33 @@ def interactive_mode():
                 print("\n\033[1;32mCouncil session ended. Goodbye!\033[0m")
                 break
 
+            # Check for Self-Improvement Mode trigger (before processing input)
+            is_self_improve_trigger = (
+                "self-improvement mode" in user_input.lower() or 
+                "self-improve" in user_input.lower()
+            )
+            
+            # If trigger detected, support multi-line input
+            if is_self_improve_trigger:
+                print("\n\033[1;33mSelf-Improvement Mode activated. Paste your full prompt (end with blank line or Ctrl+D):\033[0m")
+                lines = [user_input]  # Include the first line that had the trigger
+                while True:
+                    try:
+                        line = input()
+                        if line == "":
+                            break
+                        lines.append(line)
+                    except EOFError:
+                        break
+                full_prompt = "\n".join(lines)
+                print("\n\033[1;33mFull council deliberating on self-evolution...\033[0m\n")
+            else:
+                full_prompt = user_input
+            
             # Handle Self-Improvement Mode - bypass Curator
-            if "self-improvement mode" in user_input.lower() or "self-improve" in user_input.lower():
-                print("\n\033[1;33mSelf-Improvement Mode activated. Full council deliberating on self-evolution...\033[0m\n")
+            if is_self_improve_trigger or "self-improvement mode" in full_prompt.lower() or "self-improve" in full_prompt.lower():
                 try:
-                    result = run_council_sync(user_input, skip_curator=True)
+                    result = run_council_sync(full_prompt, skip_curator=True)
                 except KeyboardInterrupt:
                     print("\n\n\033[1;31mDeliberation interrupted by user.\033[0m")
                     print("Returning to Curator...\n")
