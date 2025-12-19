@@ -58,8 +58,10 @@ def interactive_mode():
             
             # Handle Self-Improvement Mode - bypass Curator
             if is_self_improve_trigger or "self-improvement mode" in full_prompt.lower() or "self-improve" in full_prompt.lower():
+                print("\n\033[1;33m[DEBUG] Self-Improvement Mode: starting full council deliberation\033[0m\n")
                 try:
                     result = run_council_sync(full_prompt, skip_curator=True)
+                    print("\n\033[1;33m[DEBUG] Deliberation complete, displaying results\033[0m\n")
                 except KeyboardInterrupt:
                     print("\n\n\033[1;31mDeliberation interrupted by user.\033[0m")
                     print("Returning to Curator...\n")
@@ -70,9 +72,11 @@ def interactive_mode():
                     print(f"\n\033[1;31mError: {result['error']}\033[0m")
                     continue
                 
-                # Display full chain of thought
+                # Display full chain of thought (skip Curator, start with Researcher)
                 print("\033[1;35mResearcher (bold exploration):\033[0m")
-                print(result['agents'][1]['output'])  # Skip Curator (index 0), Researcher is index 1
+                # When skip_curator=True, Curator is still at index 0 but empty/placeholder
+                # Researcher is at index 1
+                print(result['agents'][1]['output'])
                 print("\n\033[1;31mCritic (contrarian challenge):\033[0m")
                 print(result['agents'][2]['output'])
                 print("\n\033[1;36mPlanner (multi-track strategy):\033[0m")

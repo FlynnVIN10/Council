@@ -141,30 +141,30 @@ Keep your response short and engaging (target ~150-300 tokens max).
 Never give the final answer yourself — always pass to the council.
 Prompt: {prompt}"""
         
-    try:
-        curator_output = ollama_completion(
-            [{"role": "user", "content": curator_prompt}],
-            max_tokens=300,  # Hard cap — very fast
-            temperature=0.8  # Slightly lower for reliability
-        )
-        
-        # Clean output - remove any model prefixes or artifacts
-        curator_output = curator_output.strip()
-        # Remove common prefixes that models sometimes add
-        prefixes_to_remove = ["### Assistant:", "Assistant:", "Curator:", "### Curator:"]
-        for prefix in prefixes_to_remove:
-            if curator_output.startswith(prefix):
-                curator_output = curator_output[len(prefix):].strip()
-        
-        print(f"Curator complete: {len(curator_output)} chars\n")
-    except KeyboardInterrupt:
-        raise  # Re-raise to be handled by caller
-    except Exception as e:
-        return {"error": f"Curator failed: {str(e)}"}
+        try:
+            curator_output = ollama_completion(
+                [{"role": "user", "content": curator_prompt}],
+                max_tokens=300,  # Hard cap — very fast
+                temperature=0.8  # Slightly lower for reliability
+            )
+            
+            # Clean output - remove any model prefixes or artifacts
+            curator_output = curator_output.strip()
+            # Remove common prefixes that models sometimes add
+            prefixes_to_remove = ["### Assistant:", "Assistant:", "Curator:", "### Curator:"]
+            for prefix in prefixes_to_remove:
+                if curator_output.startswith(prefix):
+                    curator_output = curator_output[len(prefix):].strip()
+            
+            print(f"Curator complete: {len(curator_output)} chars\n")
+        except KeyboardInterrupt:
+            raise  # Re-raise to be handled by caller
+        except Exception as e:
+            return {"error": f"Curator failed: {str(e)}"}
     else:
         # When skipping Curator (after confirmation), show a message
+        print("Starting council – loading model (first run only, please wait)...")
         curator_output = f"Curator: Understood. Deliberation beginning with refined query: {prompt}"
-        print("Starting full council deliberation...\n")
     
     # Researcher agent
     print("Running Researcher (bold exploration)...")
