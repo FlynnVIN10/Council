@@ -37,11 +37,6 @@ app.mount("/static", StaticFiles(directory=ui_dir), name="static")
 class PromptRequest(BaseModel):
     prompt: str
 
-@app.get("/")
-async def serve_ui():
-    """Serve the main UI page"""
-    index_path = os.path.join(ui_dir, "index.html")
-    return FileResponse(index_path)
 
 async def council_stream(prompt: str):
     """Stream council deliberation via SSE"""
@@ -68,7 +63,8 @@ async def council_stream(prompt: str):
         
         # If asking for confirmation and not self-improve mode, stop here
         if curator_result.get('asking_confirmation') and not is_self_improve:
-            yield f"data: {json.dumps({'type': 'agent', 'agent': 'Curator', 'content': '\\n\\nReady for full council deliberation? (Full deliberation will take ~12 minutes)'})}\n\n"
+            # Send any remaining content first
+            yield f"data: {json.dumps({'type': 'content', 'content': '\\n\\nReady for full council deliberation? (Full deliberation will take ~12 minutes)'})}\n\n"
             yield f"data: {json.dumps({'done': True, 'needs_confirmation': True})}\n\n"
             return
         

@@ -48,39 +48,50 @@
       let currentMessage = null;
       
       eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'agent' && data.agent) {
-          // New agent starting - create new message bubble
-          currentAgent = data.agent;
-          currentMessage = addMessage(data.agent, '', getAgentClass(data.agent), true);
-        }
-        
-        if (data.type === 'content' && data.content && currentMessage) {
-          // Append content to current message
-          const p = currentMessage.querySelector('p');
-          if (p) {
-            p.textContent += data.content;
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'agent' && data.agent) {
+            // New agent starting - create new message bubble
+            currentAgent = data.agent;
+            currentMessage = addMessage(data.agent, '', getAgentClass(data.agent), true);
           }
-        }
-        
-        if (data.type === 'error') {
-          addMessage('Error', data.content, 'bg-red-900/50 border-red-600');
-        }
-        
-        if (data.done) {
-          eventSource.close();
-          input.disabled = false;
-          form.querySelector('button').disabled = false;
-          input.focus();
+          
+          if (data.type === 'content' && data.content) {
+            // Append content to current message (create one if needed)
+            if (!currentMessage) {
+              currentMessage = addMessage(currentAgent || 'System', '', 'bg-gray-800', true);
+            }
+            const p = currentMessage.querySelector('p');
+            if (p) {
+              p.textContent += data.content;
+              messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+          }
+          
+          if (data.type === 'error') {
+            addMessage('Error', data.content, 'bg-red-900/50 border-red-600');
+          }
+          
+          if (data.done) {
+            eventSource.close();
+            input.disabled = false;
+            form.querySelector('button').disabled = false;
+            input.focus();
+          }
+        } catch (e) {
+          console.error('Error parsing SSE data:', e);
         }
       };
 
-      eventSource.onerror = () => {
+      eventSource.onerror = (error) => {
+        console.error('EventSource error:', error);
         eventSource.close();
         if (currentMessage) {
-          currentMessage.querySelector('p').textContent += "\n\n[Stream ended]";
+          const p = currentMessage.querySelector('p');
+          if (p) {
+            p.textContent += "\n\n[Connection ended]";
+          }
         }
         input.disabled = false;
         form.querySelector('button').disabled = false;
