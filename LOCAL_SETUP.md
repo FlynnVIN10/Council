@@ -112,7 +112,7 @@ This:
 - Activates venv
 - Starts API with reload on port 8000
 
-The Council will be available at http://localhost:8000
+After running `./council-restart.sh`, open **http://localhost:8000** in your browser to access The Council web UI.
 
 **Note**: The script uses robust process killing with proper waits to prevent port conflicts. Ollama output is logged to `ollama.log` for debugging.
 

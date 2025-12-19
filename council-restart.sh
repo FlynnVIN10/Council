@@ -16,8 +16,17 @@ nohup ollama serve > ollama.log 2>&1 &
 echo "Waiting for Ollama to initialize..."
 sleep 8
 
+echo ""
+echo "============================================================"
+echo "Starting The Council API server..."
+echo "Once you see 'Application startup complete', open:"
+echo "http://localhost:8000"
+echo "============================================================"
+echo ""
+
+# Uncomment the line below to automatically open the browser (macOS only)
+# open http://localhost:8000
+
 echo "Starting API server..."
 source venv/bin/activate
 uvicorn src.api.main:app --reload --port 8000
-
-echo "The Council is running at http://localhost:8000"
