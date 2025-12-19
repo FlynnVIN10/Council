@@ -91,12 +91,15 @@ LLM_MAX_TOKENS=3700    # ~12 minute full council runs on CPU-only hardware
 
 ## Self-Improvement Mode
 
-Trigger with: `"Council, enter Self-Improvement Mode"` or include `"self-improve"` in your prompt.
+Simply include `"self-improvement mode"` or `"self-improve"` in your message to trigger. Single-line input, natural conversation flow.
+
+**Example**: `"Council, enter self-improvement mode and analyze how to improve error handling"`
 
 The Council will:
-- **Analyze its own codebase** — examine structure, identify improvement opportunities
-- **Propose one high-leverage improvement** — with concrete code changes
-- **Wait for approval** — present the proposal with file changes, impact, and rollback instructions
+- **Curator responds**: "Entering Self-Improvement Mode — the full council will now deliberate on a self-evolution proposal (~12 minutes)."
+- **Full council deliberates**: Analyzes its own codebase, examines structure, identifies improvement opportunities
+- **Proposes one high-leverage improvement** with concrete, complete code changes
+- **Waits for approval**: Presents the proposal with file changes, impact, and rollback instructions
 
 **To approve and execute**: Type `"Approved. Proceed"` after reviewing the proposal.
 
@@ -105,14 +108,16 @@ The Council will:
 - No destructive actions (no file deletion, no main branch changes)
 - Complete rollback instructions included
 - Full diffs shown before and after execution
+- Validation ensures complete, executable code (no placeholders)
 
 **Example flow**:
-1. Trigger: `"Council, enter Self-Improvement Mode and analyze how to improve error handling"`
-2. Review the proposal (files to change, impact, rollback plan)
-3. Approve: `"Approved. Proceed"`
-4. Changes are applied and committed to the proposal branch
-5. Review with `git diff main self-improve/proposal-XXX`
-6. Merge when satisfied or rollback with `git checkout main && git branch -D self-improve/proposal-XXX`
+1. Type: `"Council, enter self-improvement mode and analyze how to improve error handling"`
+2. Curator acknowledges, full council deliberates (~12 minutes)
+3. Review the proposal (files to change, impact, rollback plan)
+4. Approve: `"Approved. Proceed"`
+5. Changes are applied and committed to the proposal branch
+6. Review with `git diff main self-improve/proposal-XXX`
+7. Merge when satisfied or rollback with `git checkout main && git branch -D self-improve/proposal-XXX`
 
 This turns the Council into a true self-evolving system under human oversight.
 
