@@ -165,8 +165,10 @@ def interactive_mode():
                         print(f"\n\033[1;31mError: {curator_result['error']}\033[0m")
                         continue
                     
+                    # Print single clean Curator response
                     print("\033[1;36mCurator (fast assistant):\033[0m")
-                    print(curator_result['output'])
+                    print(curator_result['output'].strip())
+                    print()  # Single blank line for separation
                     
                     curator_history.append({"role": "assistant", "content": curator_result['output']})
                     
@@ -230,10 +232,6 @@ def interactive_mode():
                     continue
             
             # Full council results display (only reached after "yes" confirmation)
-            if "error" in result:
-                print(f"\n\033[1;31mError: {result['error']}\033[0m")
-                continue
-
             if "error" in result:
                 print(f"\n\033[1;31mError: {result['error']}\033[0m")
                 continue

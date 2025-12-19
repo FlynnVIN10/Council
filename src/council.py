@@ -42,6 +42,14 @@ Session history (if any): {history_summary}"""
             temperature=0.8  # Slightly lower for reliability
         )
         
+        # Clean output - remove any model prefixes or artifacts
+        curator_output = curator_output.strip()
+        # Remove common prefixes that models sometimes add
+        prefixes_to_remove = ["### Assistant:", "Assistant:", "Curator:", "### Curator:"]
+        for prefix in prefixes_to_remove:
+            if curator_output.startswith(prefix):
+                curator_output = curator_output[len(prefix):].strip()
+        
         # Check if Curator is asking for confirmation
         # Only mark as asking if there's a substantive query (not just greetings)
         is_greeting_only = len(prompt.strip()) < 30 and any(
@@ -139,6 +147,15 @@ Prompt: {prompt}"""
             max_tokens=300,  # Hard cap — very fast
             temperature=0.8  # Slightly lower for reliability
         )
+        
+        # Clean output - remove any model prefixes or artifacts
+        curator_output = curator_output.strip()
+        # Remove common prefixes that models sometimes add
+        prefixes_to_remove = ["### Assistant:", "Assistant:", "Curator:", "### Curator:"]
+        for prefix in prefixes_to_remove:
+            if curator_output.startswith(prefix):
+                curator_output = curator_output[len(prefix):].strip()
+        
         print(f"Curator complete: {len(curator_output)} chars\n")
     except KeyboardInterrupt:
         raise  # Re-raise to be handled by caller
