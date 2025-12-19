@@ -1,56 +1,137 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full bg-gray-900">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Council</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        textarea { width: 100%; height: 100px; }
-        button { margin: 10px 0; }
-        .panel { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Council</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; }
+    #messages { min-height: 70vh; }
+    .agent-cur { @apply bg-cyan-900/50 border-cyan-600; }
+    .agent-res { @apply bg-blue-900/50 border-blue-600; }
+    .agent-cri { @apply bg-red-900/50 border-red-600; }
+    .agent-pla { @apply bg-yellow-900/50 border-yellow-600; }
+    .agent-jud { @apply bg-green-900/50 border-green-600; }
+    .final { @apply bg-purple-900/70 border-purple-500 font-bold; }
+  </style>
 </head>
-<body>
-    <h1>The Council</h1>
-    <textarea id="prompt" placeholder="Enter your prompt..."></textarea>
-    <button onclick="askCouncil()">Ask Council</button>
-    
-    <div id="results">
-        <div id="researcher" class="panel"><h3>Researcher</h3><p></p></div>
-        <div id="critic" class="panel"><h3>Critic</h3><p></p></div>
-        <div id="planner" class="panel"><h3>Planner</h3><p></p></div>
-        <div id="judge" class="panel"><h3>Judge</h3><p></p></div>
-        <div id="final" class="panel"><h3>Final Answer</h3><p></p></div>
-        <div id="reasoning" class="panel"><h3>Reasoning Summary</h3><p></p></div>
-    </div>
+<body class="h-full flex flex-col text-gray-100">
+  <header class="border-b border-gray-700 p-4 text-center">
+    <h1 class="text-2xl font-bold">The Council</h1>
+    <p class="text-sm text-gray-400">Bold & Deep Mode — phi3:mini @ 3700 tokens</p>
+  </header>
 
-    <script>
-        async function askCouncil() {
-            const prompt = document.getElementById('prompt').value;
-            if (!prompt) return alert('Enter a prompt!');
-            
-            try {
-                const response = await fetch('/council', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt })
-                });
-                const data = await response.json();
-                
-                data.agents.forEach(agent => {
-                    const panel = document.getElementById(agent.name.toLowerCase());
-                    if (panel) {
-                        panel.querySelector('p').textContent = agent.output;
-                    }
-                });
-                document.getElementById('final').querySelector('p').textContent = data.final_answer;
-                document.getElementById('reasoning').querySelector('p').textContent = data.reasoning_summary;
-            } catch (error) {
-                alert('Error: ' + error.message);
+  <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+
+  <form id="input-form" class="p-4 border-t border-gray-700 flex gap-2">
+    <input id="user-input" type="text" placeholder="Message The Council..." class="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500" autocomplete="off" />
+    <button type="submit" class="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg font-medium">Send</button>
+  </form>
+
+  <script>
+    const messagesDiv = document.getElementById('messages');
+    const form = document.getElementById('input-form');
+    const input = document.getElementById('user-input');
+
+    // Load conversation history from localStorage
+    function loadHistory() {
+      const history = JSON.parse(localStorage.getItem('council-history') || '[]');
+      history.forEach(msg => {
+        addMessage(msg.sender, msg.content, msg.className, false);
+      });
+    }
+
+    // Save message to localStorage
+    function saveMessage(sender, content, className) {
+      const history = JSON.parse(localStorage.getItem('council-history') || '[]');
+      history.push({ sender, content, className, timestamp: Date.now() });
+      localStorage.setItem('council-history', JSON.stringify(history));
+    }
+
+    async function sendMessage() {
+      const userText = input.value.trim();
+      if (!userText) return;
+      
+      addMessage('You', userText, 'bg-gray-700 text-white');
+      saveMessage('You', userText, 'bg-gray-700 text-white');
+      input.value = '';
+      input.disabled = true;
+      form.querySelector('button').disabled = true;
+
+      try {
+        const response = await fetch('/council', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: userText })
+        });
+
+        if (!response.ok) throw new Error('Request failed');
+
+        const data = await response.json();
+        
+        // Display each agent's output
+        if (data.agents) {
+          data.agents.forEach(agent => {
+            const agentName = agent.name || 'Unknown';
+            const output = agent.output || '';
+            if (output) {
+              const className = getAgentClass(agentName);
+              addMessage(agentName, output, className);
+              saveMessage(agentName, output, className);
             }
+          });
         }
-    </script>
+
+        // Display final answer
+        if (data.final_answer) {
+          addMessage('Final Answer', data.final_answer, 'final');
+          saveMessage('Final Answer', data.final_answer, 'final');
+        }
+
+        // Display reasoning summary
+        if (data.reasoning_summary) {
+          addMessage('Reasoning', data.reasoning_summary, 'bg-gray-800');
+          saveMessage('Reasoning', data.reasoning_summary, 'bg-gray-800');
+        }
+      } catch (error) {
+        addMessage('Error', `Failed to get response: ${error.message}`, 'bg-red-900/50 border-red-600');
+      } finally {
+        input.disabled = false;
+        form.querySelector('button').disabled = false;
+        input.focus();
+      }
+    }
+
+    function addMessage(sender, content, className, streaming = false) {
+      const div = document.createElement('div');
+      div.className = `p-4 rounded-lg border ${className}`;
+      div.innerHTML = `<strong>${sender}:</strong><p class="mt-2 whitespace-pre-wrap">${streaming ? '' : content}</p>`;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      return div;
+    }
+
+    function getAgentClass(agent) {
+      const map = { 
+        Curator: 'agent-cur', 
+        Researcher: 'agent-res', 
+        Critic: 'agent-cri', 
+        Planner: 'agent-pla', 
+        Judge: 'agent-jud', 
+        'Final Answer': 'final' 
+      };
+      return map[agent] || 'bg-gray-800';
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      sendMessage();
+    });
+
+    // Load history on page load
+    loadHistory();
+    input.focus();
+  </script>
 </body>
 </html>
-
