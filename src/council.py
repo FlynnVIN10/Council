@@ -30,6 +30,7 @@ CORE RULES:
 - Help refine the query naturally over turns.
 - ONLY ask for deliberation when the query is clear/refined: "I have a refined query ready: '[query]' \nReady for the full council deliberation? (yes/no)"
 - Keep responses short, direct, and engaging (under 150 words).
+- If the user says anything about "Self-Improvement Mode" or "self-improve", immediately respond: "Entering Self-Improvement Mode now. The full council will analyze and propose a self-evolution." Then stop — do not refine or ask confirmation.
 
 Prompt: {prompt}
 Session history (if any): {history_summary}"""
@@ -60,6 +61,8 @@ Session history (if any): {history_summary}"""
             "asking_confirmation": asking_confirmation,
             "prompt": prompt
         }
+    except KeyboardInterrupt:
+        raise  # Re-raise to be handled by caller
     except Exception as e:
         return {"error": f"Curator failed: {str(e)}"}
 
@@ -130,15 +133,17 @@ Keep your response short and engaging (target ~150-300 tokens max).
 Never give the final answer yourself — always pass to the council.
 Prompt: {prompt}"""
         
-        try:
-            curator_output = ollama_completion(
-                [{"role": "user", "content": curator_prompt}],
-                max_tokens=300,  # Hard cap — very fast
-                temperature=0.8  # Slightly lower for reliability
-            )
-            print(f"Curator complete: {len(curator_output)} chars\n")
-        except Exception as e:
-            return {"error": f"Curator failed: {str(e)}"}
+    try:
+        curator_output = ollama_completion(
+            [{"role": "user", "content": curator_prompt}],
+            max_tokens=300,  # Hard cap — very fast
+            temperature=0.8  # Slightly lower for reliability
+        )
+        print(f"Curator complete: {len(curator_output)} chars\n")
+    except KeyboardInterrupt:
+        raise  # Re-raise to be handled by caller
+    except Exception as e:
+        return {"error": f"Curator failed: {str(e)}"}
     else:
         # When skipping Curator (after confirmation), show a message
         curator_output = f"Curator: Understood. Deliberation beginning with refined query: {prompt}"
@@ -184,6 +189,8 @@ Provide detailed reasoning, examples, risks, and rewards."""
     try:
         research_output = ollama_completion([{"role": "user", "content": researcher_prompt}])
         print(f"Researcher complete: {len(research_output)} chars\n")
+    except KeyboardInterrupt:
+        raise  # Re-raise to be handled by caller
     except Exception as e:
         return {"error": f"Researcher failed: {str(e)}"}
 
@@ -209,6 +216,8 @@ Output sharp, focused critique that forces greater ambition."""
     try:
         critic_output = ollama_completion([{"role": "user", "content": critic_prompt}])
         print(f"Critic complete: {len(critic_output)} chars\n")
+    except KeyboardInterrupt:
+        raise  # Re-raise to be handled by caller
     except Exception as e:
         return {"error": f"Critic failed: {str(e)}"}
 
@@ -239,6 +248,8 @@ Output a clear, numbered multi-track action plan with timelines."""
     try:
         planner_output = ollama_completion([{"role": "user", "content": planner_prompt}])
         print(f"Planner complete: {len(planner_output)} chars\n")
+    except KeyboardInterrupt:
+        raise  # Re-raise to be handled by caller
     except Exception as e:
         return {"error": f"Planner failed: {str(e)}"}
 
@@ -307,6 +318,8 @@ Now synthesize a complete 4-item portfolio."""
     try:
         judge_output = ollama_completion([{"role": "user", "content": judge_prompt}])
         print(f"Judge complete: {len(judge_output)} chars\n")
+    except KeyboardInterrupt:
+        raise  # Re-raise to be handled by caller
     except Exception as e:
         return {"error": f"Judge failed: {str(e)}"}
 

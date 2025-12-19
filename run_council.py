@@ -33,6 +33,63 @@ def interactive_mode():
                 print("\n\033[1;32mCouncil session ended. Goodbye!\033[0m")
                 break
 
+            # Handle Self-Improvement Mode - bypass Curator
+            if "self-improvement mode" in user_input.lower() or "self-improve" in user_input.lower():
+                print("\n\033[1;33mSelf-Improvement Mode activated. Full council deliberating on self-evolution...\033[0m\n")
+                try:
+                    result = run_council_sync(user_input, skip_curator=True)
+                except KeyboardInterrupt:
+                    print("\n\n\033[1;31mDeliberation interrupted by user.\033[0m")
+                    print("Returning to Curator...\n")
+                    print_header()
+                    continue
+                
+                if "error" in result:
+                    print(f"\n\033[1;31mError: {result['error']}\033[0m")
+                    continue
+                
+                # Display full chain of thought
+                print("\033[1;35mResearcher (bold exploration):\033[0m")
+                print(result['agents'][1]['output'])  # Skip Curator (index 0), Researcher is index 1
+                print("\n\033[1;31mCritic (contrarian challenge):\033[0m")
+                print(result['agents'][2]['output'])
+                print("\n\033[1;36mPlanner (multi-track strategy):\033[0m")
+                print(result['agents'][3]['output'])
+                print("\n\033[1;32mJudge (visionary synthesis):\033[0m")
+                print(result['agents'][4]['output'])
+
+                print("\n" + "="*60)
+                print("\033[1;37mFINAL COUNCIL ANSWER\033[0m")
+                print("="*60)
+                print(result['final_answer'])
+                print("\n\033[1;37mREASONING SUMMARY\033[0m")
+                print(result['reasoning_summary'])
+
+                # Handle self-improvement proposal
+                if result.get("is_self_improve") and "proposal" in result:
+                    last_proposal = result["proposal"]
+                    print("\n" + "="*60)
+                    print("\033[1;33m🔧 SELF-IMPROVEMENT PROPOSAL GENERATED\033[0m")
+                    print("="*60)
+                    if "description" in last_proposal:
+                        print(f"\n\033[1;36mProposal:\033[0m {last_proposal['description']}")
+                    if "file_changes" in last_proposal:
+                        print(f"\n\033[1;36mFiles to modify:\033[0m {', '.join(last_proposal['file_changes'].keys())}")
+                    if "impact" in last_proposal:
+                        print(f"\n\033[1;36mExpected Impact:\033[0m {last_proposal['impact']}")
+                    print("\n\033[1;33mTo approve and execute, type: 'Approved. Proceed'\033[0m")
+                else:
+                    last_proposal = None
+
+                curator_history = []  # Reset after full council run
+                waiting_for_confirmation = False
+                refined_query = None
+
+                print("\n" + "-"*60)
+                input("\033[1;34mPress Enter for next message...\033[0m")
+                print_header()
+                continue
+
             # Handle approval for self-improvement
             if user_input.lower() == "approved. proceed" and last_proposal:
                 print("\n\033[1;33mExecuting approved proposal...\033[0m\n")
@@ -57,7 +114,15 @@ def interactive_mode():
                     # Run full council with refined query
                     query_to_use = refined_query if refined_query else user_input
                     print("\n\033[1;33mThe Council is deliberating...\033[0m\n")
-                    result = run_council_sync(query_to_use, skip_curator=True)
+                    try:
+                        result = run_council_sync(query_to_use, skip_curator=True)
+                    except KeyboardInterrupt:
+                        print("\n\n\033[1;31mDeliberation interrupted by user.\033[0m")
+                        print("Returning to Curator...\n")
+                        waiting_for_confirmation = False
+                        refined_query = None
+                        print_header()
+                        continue
                     waiting_for_confirmation = False
                     refined_query = None
                     curator_history = []  # Reset after full council run
@@ -66,7 +131,14 @@ def interactive_mode():
                 else:
                     # Continue conversation with Curator
                     curator_history.append({"role": "user", "content": user_input})
-                    curator_result = run_curator_only(user_input, curator_history)
+                    try:
+                        curator_result = run_curator_only(user_input, curator_history)
+                    except KeyboardInterrupt:
+                        print("\n\n\033[1;31mCurator interrupted by user.\033[0m")
+                        print("Returning to input...\n")
+                        waiting_for_confirmation = False
+                        print_header()
+                        continue
                     if "error" in curator_result:
                         print(f"\n\033[1;31mError: {curator_result['error']}\033[0m")
                         continue
@@ -97,7 +169,13 @@ def interactive_mode():
                 # Normal flow: Run Curator first
                 print("\n\033[1;33mThe Council (Curator) engaging...\033[0m\n")
                 curator_history.append({"role": "user", "content": user_input})
-                curator_result = run_curator_only(user_input, curator_history)
+                try:
+                    curator_result = run_curator_only(user_input, curator_history)
+                except KeyboardInterrupt:
+                    print("\n\n\033[1;31mCurator interrupted by user.\033[0m")
+                    print("Returning to input...\n")
+                    print_header()
+                    continue
                 
                 if "error" in curator_result:
                     print(f"\n\033[1;31mError: {curator_result['error']}\033[0m")
