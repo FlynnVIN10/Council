@@ -44,6 +44,30 @@ See `EXAMPLES.md` for sample prompts and outputs.
 
 **Tip**: Keep the terminal running `ollama serve` open between sessions to avoid reloading.
 
+## One-Command Restart
+
+For quick full restarts (kills old Ollama, starts fresh Ollama + API):
+
+Add this alias to your shell profile (`~/.zshrc` or `~/.bash_profile`):
+
+```bash
+alias council-restart='pkill -f "ollama serve"; ollama serve & cd /Users/Flynn/Documents/GitHub/Council && source venv/bin/activate && uvicorn src.api.main:app --reload'
+```
+
+Then run:
+```bash
+source ~/.zshrc   # or source ~/.bash_profile
+```
+
+Now simply type:
+```bash
+council-restart
+```
+
+This restarts everything and opens the web UI at http://localhost:8000.
+
+**Note**: Adjust the `cd` path if your repo is in a different location.
+
 ## CLI Experience (LLM-Style Conversation)
 
 Run: `python run_council.py`

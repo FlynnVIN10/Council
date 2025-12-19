@@ -98,6 +98,30 @@ python run_council.py "Test prompt: What is the capital of France?"
 uvicorn src.api.main:app --reload
 ```
 
+### One-Command Restart
+
+For quick full restarts (kills old Ollama, starts fresh Ollama + API):
+
+Add this alias to your shell profile (`~/.zshrc` or `~/.bash_profile`):
+
+```bash
+alias council-restart='pkill -f "ollama serve"; ollama serve & cd /Users/Flynn/Documents/GitHub/Council && source venv/bin/activate && uvicorn src.api.main:app --reload'
+```
+
+Then run:
+```bash
+source ~/.zshrc   # or source ~/.bash_profile
+```
+
+Now simply type:
+```bash
+council-restart
+```
+
+This restarts everything and opens the web UI at http://localhost:8000.
+
+**Note**: Adjust the `cd` path if your repo is in a different location.
+
 - **API**: POST to http://localhost:8000/council
 - **UI**: Open http://localhost:8000 in browser
 
