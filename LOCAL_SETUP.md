@@ -92,35 +92,13 @@ python run_council.py
 python run_council.py "Test prompt: What is the capital of France?"
 ```
 
-### API and Web UI
+### Usage
 
-```bash
-uvicorn src.api.main:app --reload
-```
+Run `./council-restart.sh`
 
-### Full Platform Restart
+The script starts Ollama and drops you directly into the interactive CLI prompt ("You:").
 
-Use the helper script for reliable restart:
-
-**From the repo directory:**
-```bash
-./council-restart.sh
-```
-
-**From anywhere (using absolute path):**
-```bash
-/Users/Flynn/Documents/GitHub/Council/council-restart.sh
-```
-
-This:
-- Stops old Ollama and uvicorn processes (with proper waits)
-- Starts fresh Ollama server in background (logs to `ollama.log`)
-- Activates venv
-- Starts API with reload on port 8000
-
-After running the script, open **http://localhost:8000** in your browser to access The Council web UI.
-
-**Note**: The script uses robust process killing with proper waits to prevent port conflicts. Ollama output is logged to `ollama.log` for debugging.
+Conversation flows naturally with the Curator and full council deliberation on demand.
 
 **Global alias** (add to `~/.zshrc` for access from anywhere):
 ```bash
@@ -129,8 +107,6 @@ alias council-restart='/Users/Flynn/Documents/GitHub/Council/council-restart.sh'
 
 Then `source ~/.zshrc` and you can run `council-restart` from any directory.
 
-- **API**: POST to http://localhost:8000/council
-- **UI**: Open http://localhost:8000 in browser
 
 ---
 

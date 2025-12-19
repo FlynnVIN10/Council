@@ -6,9 +6,7 @@ This project implements a fully local, offline "AI council" with 5 agents runnin
 
 - **Agents**: Curator (fast assistant/receptionist), Researcher (gathers info/explores), Critic (points out weaknesses), Planner (structures steps), Synthesizer/Judge (combines into final answer).
 - **Orchestration**: CrewAI for sequential task execution.
-- **API**: FastAPI for HTTP access.
-- **CLI**: Simple terminal interface.
-- **UI**: Minimal web UI served by the API (plain HTML/JS).
+- **CLI**: Interactive terminal interface with natural conversation flow.
 - **Config**: Editable via .env for model, temperature, etc.
 - **Offline**: Runs entirely locally after model download.
 
@@ -20,11 +18,17 @@ See `EXAMPLES.md` for sample prompts and outputs.
 
 1. Follow `LOCAL_SETUP.md` to set up Ollama and models.
 2. Copy `.env.example` to `.env` and adjust if needed.
-3. Activate venv: `source venv/bin/activate`
-4. Run CLI: `python run_council.py` (interactive mode) or `python run_council.py "Your prompt here"` (single-shot)
-5. Run API/UI: `uvicorn src.api.main:app --reload`
-6. Open http://localhost:8000 in your browser for the UI.
-7. Or POST to http://localhost:8000/council with JSON `{"prompt": "Your prompt"}`.
+3. Run: `./council-restart.sh`
+4. The script starts Ollama and drops you directly into the interactive CLI prompt ("You:").
+5. Conversation flows naturally with the Curator and full council deliberation on demand.
+
+**Alternative**: Run manually:
+```bash
+source venv/bin/activate
+python run_council.py  # Interactive mode
+# or
+python run_council.py "Your prompt here"  # Single-shot
+```
 
 ## Performance Notes
 
@@ -44,29 +48,13 @@ See `EXAMPLES.md` for sample prompts and outputs.
 
 **Tip**: Keep the terminal running `ollama serve` open between sessions to avoid reloading.
 
-## Full Platform Restart
+## Usage
 
-Use the helper script for reliable restart:
+Run `./council-restart.sh`
 
-**From the repo directory:**
-```bash
-./council-restart.sh
-```
+The script starts Ollama and drops you directly into the interactive CLI prompt ("You:").
 
-**From anywhere (using absolute path):**
-```bash
-/Users/Flynn/Documents/GitHub/Council/council-restart.sh
-```
-
-This:
-- Stops old Ollama and uvicorn processes (with proper waits)
-- Starts fresh Ollama server in background (logs to `ollama.log`)
-- Activates venv
-- Starts API with reload on port 8000
-
-After running the script, open **http://localhost:8000** in your browser to access The Council web UI.
-
-**Note**: The script uses robust process killing with proper waits to prevent port conflicts. Ollama output is logged to `ollama.log` for debugging.
+Conversation flows naturally with the Curator and full council deliberation on demand.
 
 **Global alias** (add to `~/.zshrc` for access from anywhere):
 ```bash
