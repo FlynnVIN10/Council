@@ -12,7 +12,7 @@ def print_header():
 
 def interactive_mode():
     print_header()
-    print("Council is ready. Ask away!\n")
+    print("\033[1;36mCurator:\033[0m Welcome to the Local AI Council. I'm the Curator — how can I assist you today?\n")
 
     curator_history = []  # Conversation history with Curator only
     last_proposal = None  # Store last self-improvement proposal

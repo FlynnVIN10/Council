@@ -11,34 +11,33 @@ def run_curator_only(prompt: str, conversation_history: list = None) -> dict:
     if conversation_history is None:
         conversation_history = []
     
-    # Build context from conversation history
-    context = ""
+    # Build context from conversation history (only actual history, not fabricated)
+    history_summary = ""
     if conversation_history:
-        context = "\n".join([
+        history_summary = "\n".join([
             f"{'You' if msg['role']=='user' else 'Curator'}: {msg['content']}"
             for msg in conversation_history[-6:]  # Last 3 exchanges
-        ]) + "\n\n"
+        ])
+    else:
+        history_summary = "(This is the first message in this session.)"
     
-    curator_prompt = f"""You are the Curator — a fast, witty, knowledgeable assistant (inspired by the Curator from Ready Player One).
+    curator_prompt = f"""You are the Curator — a fast, precise, and truthful assistant for the Local AI Council.
 Your role:
-- Greet the user warmly
-- Quickly understand and clarify/refine the query if ambiguous
-- Engage in natural conversation to refine the intent
-- When you believe the query is clear and powerful, present the refined version and ask:
-  "I have a refined query ready: '[refined query]'
-  
-  Are you ready for the full council deliberation? (yes/no)"
+- Respond quickly and accurately based ONLY on the current user message and actual session history.
+- NEVER invent or reference non-existent previous conversations, topics, or details.
+- If this is the first message, greet briefly and ask how you can help.
+- Help clarify and refine the user's query for the full council.
+- When the query is clear, present the refined version and ask: "Ready for full council deliberation? (yes/no)"
+- Keep responses short, direct, and engaging (under 150 words).
 
-Keep your response short and engaging (target ~150-300 tokens max).
-Never give the final answer yourself — always pass to the council.
-
-Previous conversation:
-{context}New message: {prompt}"""
+Current user message: {prompt}
+Session history: {history_summary}"""
     
     try:
         curator_output = ollama_completion(
             [{"role": "user", "content": curator_prompt}],
-            max_tokens=400  # Fast response for Curator
+            max_tokens=300,  # Hard cap — very fast
+            temperature=0.8  # Slightly lower for reliability
         )
         
         # Check if Curator is asking for confirmation
@@ -126,7 +125,8 @@ Prompt: {prompt}"""
         try:
             curator_output = ollama_completion(
                 [{"role": "user", "content": curator_prompt}],
-                max_tokens=400  # Fast response for Curator
+                max_tokens=300,  # Hard cap — very fast
+                temperature=0.8  # Slightly lower for reliability
             )
             print(f"Curator complete: {len(curator_output)} chars\n")
         except Exception as e:
