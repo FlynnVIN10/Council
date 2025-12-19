@@ -102,25 +102,32 @@ uvicorn src.api.main:app --reload
 
 For quick full restarts (kills old Ollama, starts fresh Ollama + API):
 
-Add this alias to your shell profile (`~/.zshrc` or `~/.bash_profile`):
+**Option 1: Use the helper script (Recommended)**
 
+Simply run:
 ```bash
-alias council-restart='pkill -f "ollama serve"; ollama serve & cd /Users/Flynn/Documents/GitHub/Council && source venv/bin/activate && uvicorn src.api.main:app --reload'
+./council-restart.sh
 ```
 
-Then run:
+**Option 2: Add as a shell alias**
+
+Add this to your shell profile (`~/.zshrc` or `~/.bash_profile`):
+
+```bash
+alias council-restart='cd /Users/Flynn/Documents/GitHub/Council && ./council-restart.sh'
+```
+
+Then reload:
 ```bash
 source ~/.zshrc   # or source ~/.bash_profile
 ```
 
-Now simply type:
+Now you can run:
 ```bash
 council-restart
 ```
 
 This restarts everything and opens the web UI at http://localhost:8000.
-
-**Note**: Adjust the `cd` path if your repo is in a different location.
 
 - **API**: POST to http://localhost:8000/council
 - **UI**: Open http://localhost:8000 in browser
