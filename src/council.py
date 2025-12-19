@@ -22,19 +22,19 @@ def run_curator_only(prompt: str, conversation_history: list = None) -> dict:
     else:
         history_summary = "(This is the first message in this session.)"
     
-    curator_prompt = f"""You are the Curator — a fast, helpful, and strictly factual assistant for The Council.
+    curator_prompt = f"""You are the Curator — a fast, friendly, and strictly truthful assistant for The Council.
 CORE RULES:
-- NEVER invent names, titles, or details. Use only the user's provided name (e.g., if they say "I'm Flynn", call them Flynn). If no name, use "you".
-- NEVER reference non-existent conversations, members, or history.
-- ONLY respond based on the current message and actual session history.
-- Be warm, casual, and engaging — like a friendly assistant.
-- Help refine the query naturally over turns.
-- ONLY ask for deliberation when the query is clear/refined: "I have a refined query ready: '[query]' \nReady for the full council deliberation? (yes/no)"
-- Keep responses short, direct, and engaging (under 150 words).
-- If the user says anything about "Self-Improvement Mode" or "self-improve", immediately respond: "Entering Self-Improvement Mode — full council deliberating on self-evolution..." Then stop — do not refine or ask confirmation.
+- NEVER invent context, previous conversations, or details that don't exist.
+- ONLY use information from the current message and actual session history.
+- If this is the first message, greet simply and ask how to help.
+- Be casual, warm, and concise — like a helpful friend.
+- Help refine the query naturally.
+- ONLY ask for deliberation when the query is clear: "I have a refined query: '[query]'. Ready for full council (~12 min)? (yes/no)"
+- Keep responses short and natural (under 100 words).
+- If the user says anything about "Self-Improvement Mode" or "self-improve", immediately respond: "Entering Self-Improvement Mode — full council deliberating on self-evolution..." Then stop.
 
-Prompt: {prompt}
-Session history (if any): {history_summary}"""
+Current message: {prompt}
+History: {history_summary}"""
     
     try:
         curator_output = ollama_completion(
@@ -43,26 +43,46 @@ Session history (if any): {history_summary}"""
             temperature=0.8  # Slightly lower for reliability
         )
         
-        # Clean output - remove any model prefixes or artifacts
+        # Clean output - remove any model prefixes, artifacts, or leaked lines
         curator_output = curator_output.strip()
         # Remove common prefixes that models sometimes add
-        prefixes_to_remove = ["### Assistant:", "Assistant:", "Curator:", "### Curator:"]
+        prefixes_to_remove = ["### Assistant:", "Assistant:", "Curator:", "### Curator:", "### User:", "User:"]
         for prefix in prefixes_to_remove:
             if curator_output.startswith(prefix):
                 curator_output = curator_output[len(prefix):].strip()
         
+        # Remove leaked lines like "Press Enter...", "### User:", etc.
+        lines_to_remove = ["Press Enter", "press enter", "### User", "### Assistant", "---", "==="]
+        cleaned_lines = []
+        for line in curator_output.split('\n'):
+            line_stripped = line.strip()
+            if not any(to_remove.lower() in line_stripped.lower() for to_remove in lines_to_remove):
+                cleaned_lines.append(line)
+        curator_output = '\n'.join(cleaned_lines).strip()
+        
         # Check if Curator is asking for confirmation
-        # Only mark as asking if there's a substantive query (not just greetings)
+        # Only mark as asking if there's a substantive, refined query (not first message, not vague)
         is_greeting_only = len(prompt.strip()) < 30 and any(
             word in prompt.lower() for word in ['hi', 'hello', 'hey', 'greeting', 'who are you', 'what are you']
         )
+        is_first_message = not conversation_history or len(conversation_history) == 0
+        
+        # Only ask for confirmation if:
+        # - Not a greeting
+        # - Not the very first message (need at least one refinement turn)
+        # - Output contains confirmation language AND has a refined query
+        has_confirmation_language = (
+            "ready for full council" in curator_output.lower() or
+            "full council" in curator_output.lower() and "(yes/no)" in curator_output.lower() or
+            "refined query" in curator_output.lower() and "(yes/no)" in curator_output.lower()
+        )
+        has_refined_query = "refined query" in curator_output.lower()
+        
         asking_confirmation = (
-            not is_greeting_only and (
-                "ready for the full council" in curator_output.lower() or
-                "full council deliberation" in curator_output.lower() or
-                "(yes/no)" in curator_output.lower() or
-                "refined query ready" in curator_output.lower()
-            )
+            not is_greeting_only and 
+            not is_first_message and
+            has_confirmation_language and
+            has_refined_query
         )
         
         return {
@@ -147,14 +167,13 @@ def run_council_sync(prompt: str, previous_proposal: dict = None, skip_curator: 
     if not skip_curator:
         print("Starting council – loading model (first run only, please wait)...")
         print("\nRunning Curator (fast assistant)...")
-        curator_prompt = f"""You are the Curator — a fast, witty, knowledgeable assistant (inspired by the Curator from Ready Player One).
-Your role:
-- Greet the user warmly  
-- Quickly understand and clarify/refine the query if ambiguous
-- Summarize the intent concisely
-- Hand off to the full council for deep, bold deliberation
-Keep your response short and engaging (target ~150-300 tokens max).
-Never give the final answer yourself — always pass to the council.
+        curator_prompt = f"""You are the Curator — a fast, friendly, and strictly truthful assistant for The Council.
+CORE RULES:
+- NEVER invent context, previous conversations, or details that don't exist.
+- ONLY use information from the current message.
+- Be casual, warm, and concise — like a helpful friend.
+- Hand off to the full council for deep deliberation.
+Keep your response short and natural (under 100 words).
 Prompt: {prompt}"""
         
         try:
@@ -164,15 +183,24 @@ Prompt: {prompt}"""
                 temperature=0.8  # Slightly lower for reliability
             )
             
-            # Clean output - remove any model prefixes or artifacts
+            # Clean output - remove any model prefixes, artifacts, or leaked lines
             curator_output = curator_output.strip()
             # Remove common prefixes that models sometimes add
-            prefixes_to_remove = ["### Assistant:", "Assistant:", "Curator:", "### Curator:"]
+            prefixes_to_remove = ["### Assistant:", "Assistant:", "Curator:", "### Curator:", "### User:", "User:"]
             for prefix in prefixes_to_remove:
                 if curator_output.startswith(prefix):
                     curator_output = curator_output[len(prefix):].strip()
             
-            print(f"Curator complete: {len(curator_output)} chars\n")
+            # Remove leaked lines like "Press Enter...", "### User:", etc.
+            lines_to_remove = ["Press Enter", "press enter", "### User", "### Assistant", "---", "==="]
+            cleaned_lines = []
+            for line in curator_output.split('\n'):
+                line_stripped = line.strip()
+                if not any(to_remove.lower() in line_stripped.lower() for to_remove in lines_to_remove):
+                    cleaned_lines.append(line)
+            curator_output = '\n'.join(cleaned_lines).strip()
+            
+        print(f"Curator complete: {len(curator_output)} chars\n")
         except KeyboardInterrupt:
             raise  # Re-raise to be handled by caller
         except Exception as e:
