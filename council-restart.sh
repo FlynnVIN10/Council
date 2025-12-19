@@ -11,34 +11,36 @@ echo "================================================================="
 echo "                         THE COUNCIL"
 echo "================================================================="
 echo ""
+
+echo "Stopping existing processes...COMPLETE"
+pkill -f "ollama serve" || true
+pkill -f "uvicorn" || true
 sleep 2
-echo "System integrity check... COMPLETE"
-sleep 1
-echo "Neural activation... COMPLETE"
-sleep 2
-echo "Conduit Open"
-echo ""
-echo "Access:"
-echo "http://localhost:8000"
+
+echo "Starting...COMPLETE"
+nohup ollama serve > ollama.log 2>&1 &
+sleep 8
+
+echo "Activating environment...COMPLETE"
+source venv/bin/activate
+
 echo ""
 echo "================================================================="
 echo "WELCOME"
 echo "================================================================="
 echo ""
 
-echo "Stopping existing processes..."
-pkill -f "ollama serve" || true
-pkill -f "uvicorn" || true
-sleep 2
+echo "System integrity check... COMPLETE"
+sleep 1
+echo "Neural activation... COMPLETE"
+sleep 1
+echo "Conduit Open"
+echo ""
+echo "Access:"
+echo "http://localhost:8000"
+echo ""
 
-echo "Starting Ollama server..."
-nohup ollama serve > ollama.log 2>&1 &
+# Uncomment the line below to automatically open the browser (macOS only)
+# open http://localhost:8000
 
-echo "Waiting for Ollama to initialize..."
-sleep 8
-
-echo "Activating environment and starting API..."
-source venv/bin/activate
 uvicorn src.api.main:app --reload --port 8000
-
-echo "The Council is running at http://localhost:8000"
