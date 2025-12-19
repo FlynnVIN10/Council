@@ -1,19 +1,23 @@
 #!/bin/bash
 
-# The Council full restart script
+echo "The Council — Full Restart"
 
-echo "Stopping existing processes..."
-pkill -f "ollama serve"
-pkill -f "uvicorn"
+echo "Stopping existing Ollama processes..."
+pkill -f "ollama serve" || true
+sleep 2
+
+echo "Stopping existing uvicorn processes..."
+pkill -f "uvicorn" || true
+sleep 2
 
 echo "Starting Ollama server..."
-ollama serve &
+nohup ollama serve > ollama.log 2>&1 &
 
 echo "Waiting for Ollama to initialize..."
-sleep 5
+sleep 8
 
-echo "Activating virtual environment and starting API..."
+echo "Starting API server..."
 source venv/bin/activate
-uvicorn src.api.main:app --reload
+uvicorn src.api.main:app --reload --port 8000
 
-echo "The Council is now running at http://localhost:8000"
+echo "The Council is running at http://localhost:8000"

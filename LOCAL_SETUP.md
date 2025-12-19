@@ -107,12 +107,14 @@ Use the helper script for reliable restart:
 ```
 
 This:
-- Stops old Ollama and uvicorn processes
-- Starts fresh Ollama server
+- Stops old Ollama and uvicorn processes (with proper waits)
+- Starts fresh Ollama server in background (logs to `ollama.log`)
 - Activates venv
-- Starts API with reload
+- Starts API with reload on port 8000
 
 The Council will be available at http://localhost:8000
+
+**Note**: The script uses robust process killing with proper waits to prevent port conflicts. Ollama output is logged to `ollama.log` for debugging.
 
 **Optional alias** (add to `~/.zshrc`):
 ```bash
