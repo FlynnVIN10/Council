@@ -1,6 +1,24 @@
 #!/bin/bash
 
-echo "The Council — Full Restart"
+echo ""
+echo "================================================================="
+echo "                         THE COUNCIL"
+echo "================================================================="
+echo ""
+sleep 2
+echo "System integrity check... COMPLETE"
+sleep 1
+echo "Neural activation... COMPLETE"
+sleep 2
+echo "Conduit Open"
+echo ""
+echo "Access:"
+echo "http://localhost:8000"
+echo ""
+echo "================================================================="
+echo "WELCOME"
+echo "================================================================="
+echo ""
 
 echo "Stopping existing Ollama processes..."
 pkill -f "ollama serve" || true
@@ -15,14 +33,6 @@ nohup ollama serve > ollama.log 2>&1 &
 
 echo "Waiting for Ollama to initialize..."
 sleep 8
-
-echo ""
-echo "============================================================"
-echo "Starting The Council API server..."
-echo "Once you see 'Application startup complete', open:"
-echo "http://localhost:8000"
-echo "============================================================"
-echo ""
 
 # Uncomment the line below to automatically open the browser (macOS only)
 # open http://localhost:8000
