@@ -16,12 +16,17 @@ echo "Stopping existing Ollama processes..."
 pkill -9 -f "ollama serve" || true
 
 echo "Aggressively stopping existing uvicorn processes..."
+# Kill by process name
 pkill -9 -f "uvicorn" || true
-sleep 2
+# Also kill by port (more reliable)
+lsof -ti :8000 | xargs kill -9 2>/dev/null || true
+sleep 3
 
 echo "Ensuring port 8000 is free..."
 for i in {1..10}; do
     if lsof -i :8000 > /dev/null 2>&1; then
+        # Try killing by port again
+        lsof -ti :8000 | xargs kill -9 2>/dev/null || true
         echo "Waiting for port 8000 to free... ($i/10)"
         sleep 1
     else
@@ -31,7 +36,7 @@ done
 
 if lsof -i :8000 > /dev/null 2>&1; then
     echo "Error: Port 8000 still in use. Manual cleanup required."
-    echo "Run: pkill -9 -f uvicorn"
+    echo "Run: lsof -ti :8000 | xargs kill -9"
     exit 1
 fi
 
