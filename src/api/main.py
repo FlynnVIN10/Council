@@ -88,10 +88,14 @@ async def council_stream(prompt: str):
         # Check if self-improvement mode (bypass curator refinement)
         is_self_improve = "self-improvement mode" in prompt.lower() or "self-improve" in prompt.lower()
         
-        # If asking for confirmation and not self-improve mode, stop here (unless user said "yes")
-        if curator_result.get('asking_confirmation') and not is_self_improve and not is_confirmation:
-            yield f"data: {json.dumps({'done': True, 'needs_confirmation': True})}\n\n"
-            return
+        # If asking for confirmation and not self-improve mode, stop here (unless user explicitly said "yes")
+        # Only proceed to full council if user said "yes" - otherwise just return and wait
+        if curator_result.get('asking_confirmation') and not is_self_improve:
+            if not is_confirmation:
+                # User hasn't confirmed yet - just return, input will be re-enabled
+                yield f"data: {json.dumps({'done': True, 'needs_confirmation': True})}\n\n"
+                return
+            # User said "yes" - continue to full council below
         
         # Run full council (either on "yes" confirmation or self-improve mode)
         result = await loop.run_in_executor(None, run_council_sync, prompt, None, is_self_improve)
