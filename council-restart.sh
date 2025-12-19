@@ -1,26 +1,19 @@
 #!/bin/bash
-# One-command restart for The Council platform
-# Kills existing processes and starts fresh Ollama + API
 
-# Kill existing ollama serve processes
-pkill -f "ollama serve" 2>/dev/null
+# The Council full restart script
 
-# Kill existing uvicorn processes
-pkill -f "uvicorn.*src.api.main" 2>/dev/null
+echo "Stopping existing processes..."
+pkill -f "ollama serve"
+pkill -f "uvicorn"
 
-# Wait a moment for processes to stop
-sleep 1
-
-# Get the directory where this script is located
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-# Start ollama serve in background
+echo "Starting Ollama server..."
 ollama serve &
 
-# Change to council directory
-cd "$SCRIPT_DIR"
+echo "Waiting for Ollama to initialize..."
+sleep 5
 
-# Activate virtual environment and start API
+echo "Activating virtual environment and starting API..."
 source venv/bin/activate
-uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn src.api.main:app --reload
 
+echo "The Council is now running at http://localhost:8000"
