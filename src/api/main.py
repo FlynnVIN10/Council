@@ -56,11 +56,14 @@ async def council_stream(prompt: str):
         # Load persistent memory
         history = load_memory()
         
+        # Check if self-improvement mode (bypass curator refinement)
+        is_self_improve = "self-improvement mode" in prompt.lower() or "self-improve" in prompt.lower()
+        
         # Check if user said "yes" to confirmation
         is_confirmation = prompt.lower().strip() == "yes"
         
         # If confirmation, use the last refined query from history
-        if is_confirmation and history:
+        if is_confirmation and history and not is_self_improve:
             # Find the last refined query from Curator
             refined_query = prompt  # fallback
             for i in range(len(history) - 1, -1, -1):
@@ -85,18 +88,17 @@ async def council_stream(prompt: str):
         # Yield full curator output at once (it's already fast)
         yield f"data: {json.dumps({'type': 'content', 'content': curator_output})}\n\n"
         
-        # Check if self-improvement mode (bypass curator refinement)
-        is_self_improve = "self-improvement mode" in prompt.lower() or "self-improve" in prompt.lower()
+        # CRITICAL: Only run full council if:
+        # 1. Self-improvement mode was triggered, OR
+        # 2. User explicitly said "yes" to confirmation
+        should_run_full_council = is_self_improve or (is_confirmation and curator_result.get('asking_confirmation'))
         
-        # If asking for confirmation and not self-improve mode, stop here (unless user explicitly said "yes")
-        # Only proceed to full council if user said "yes" - otherwise just return and wait
-        if curator_result.get('asking_confirmation') and not is_self_improve:
-            if not is_confirmation:
-                # User hasn't confirmed yet - just return, input will be re-enabled
-                yield f"data: {json.dumps({'done': True, 'needs_confirmation': True})}\n\n"
-                return
-            # User said "yes" - continue to full council below
+        if not should_run_full_council:
+            # Stay in Curator-only mode - just return, input will be re-enabled
+            yield f"data: {json.dumps({'done': True})}\n\n"
+            return
         
+        # Only reach here if we should run full council
         # Run full council (either on "yes" confirmation or self-improve mode)
         result = await loop.run_in_executor(None, run_council_sync, prompt, None, is_self_improve)
         
