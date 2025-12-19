@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, HTMLResponse
 from pydantic import BaseModel
 from src.council import run_council_sync, run_curator_only
 import os
@@ -36,6 +36,15 @@ app.mount("/static", StaticFiles(directory=ui_dir), name="static")
 
 class PromptRequest(BaseModel):
     prompt: str
+
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    """Serve the main UI page at root"""
+    index_path = os.path.join(ui_dir, "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    raise HTTPException(status_code=404, detail="UI not found")
 
 
 async def council_stream(prompt: str):
