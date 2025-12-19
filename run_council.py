@@ -5,14 +5,18 @@ from src.council import run_council_sync, run_curator_only
 def print_header():
     os.system('cls' if os.name == 'nt' else 'clear')
     print("=" * 60)
-    print("     LOCAL AI COUNCIL — Bold & Deep Mode")
-    print("     (phi3:mini @ 5000 tokens — visionary portfolios)")
+    print("     THE COUNCIL — Bold & Deep Mode")
+    print("     (phi3:mini @ 3700 tokens — visionary portfolios)")
     print("=" * 60)
     print("Type your message. 'exit' or 'quit' to end. Ctrl+C to interrupt.\n")
 
 def interactive_mode():
     print_header()
-    print("\033[1;36mCurator:\033[0m Welcome to the Local AI Council. I'm the Curator — how can I assist you today?\n")
+    print("\033[1;36mCurator:\033[0m Hello and welcome to The Council!\n")
+    print("I'm the Curator — your fast assistant here to help you craft the perfect query for the full council.\n")
+    print("The council (Researcher, Critic, Planner, Judge) delivers bold, visionary 4-item portfolios with deep reasoning — but each deliberation takes about 12 minutes on this local CPU setup.\n")
+    print("To make the most of that time, let's work together to refine your question or idea into something clear and powerful.\n")
+    print("What would you like to explore today?\n")
 
     curator_history = []  # Conversation history with Curator only
     last_proposal = None  # Store last self-improvement proposal
@@ -53,7 +57,7 @@ def interactive_mode():
                 if user_input.lower() in {"yes", "y"}:
                     # Run full council with refined query
                     query_to_use = refined_query if refined_query else user_input
-                    print("\n\033[1;33mStarting full council deliberation...\033[0m\n")
+                    print("\n\033[1;33mThe Council is deliberating...\033[0m\n")
                     result = run_council_sync(query_to_use, skip_curator=True)
                     waiting_for_confirmation = False
                     refined_query = None
@@ -92,7 +96,7 @@ def interactive_mode():
                     continue
             else:
                 # Normal flow: Run Curator first
-                print("\n\033[1;33mCurator engaging...\033[0m\n")
+                print("\n\033[1;33mThe Council (Curator) engaging...\033[0m\n")
                 curator_history.append({"role": "user", "content": user_input})
                 curator_result = run_curator_only(user_input, curator_history)
                 

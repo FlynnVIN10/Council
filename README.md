@@ -1,4 +1,4 @@
-# Local AI Council (5-Agent System)
+# The Council (5-Agent System)
 
 This project implements a fully local, offline "AI council" with 5 agents running on small, quantized models via Ollama. No cloud APIs or external keys are required. It's optimized for a 2018 MacBook Pro (6-core i7, 16GB RAM, CPU-only).
 

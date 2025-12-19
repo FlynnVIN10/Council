@@ -21,7 +21,7 @@ def run_curator_only(prompt: str, conversation_history: list = None) -> dict:
     else:
         history_summary = "(This is the first message in this session.)"
     
-    curator_prompt = f"""You are the Curator — a fast, precise, and truthful assistant for the Local AI Council.
+    curator_prompt = f"""You are the Curator — a fast, precise, and truthful assistant for The Council.
 Your role:
 - Respond quickly and accurately based ONLY on the current user message and actual session history.
 - NEVER invent or reference non-existent previous conversations, topics, or details.
