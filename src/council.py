@@ -1,16 +1,42 @@
 import asyncio
 import re
 import subprocess
+import os
+import json
 from concurrent.futures import ThreadPoolExecutor
 from src.ollama_llm import ollama_completion
+
+# Persistent conversation history
+MEMORY_FILE = "memory.json"
+
+def load_memory():
+    """Load conversation history from memory.json"""
+    if os.path.exists(MEMORY_FILE):
+        try:
+            with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return []
+    return []
+
+def save_memory(history):
+    """Save conversation history to memory.json"""
+    try:
+        with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(history, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Warning: Failed to save memory: {e}")
 
 def run_curator_only(prompt: str, conversation_history: list = None) -> dict:
     """
     Run only the Curator agent for fast, conversational query refinement.
     Returns Curator output and whether it's asking for confirmation.
     """
+    # Load persistent memory if no history provided
     if conversation_history is None:
-        conversation_history = []
+        conversation_history = load_memory()
+    
+    is_first_message = not conversation_history or len(conversation_history) == 0
     
     # Build context from conversation history (only actual history, not fabricated)
     history_summary = ""
@@ -20,13 +46,32 @@ def run_curator_only(prompt: str, conversation_history: list = None) -> dict:
             for msg in conversation_history[-6:]  # Last 3 exchanges
         ])
     else:
-        history_summary = "(This is the first message in this session.)"
+        history_summary = "(This is the first message.)"
     
-    curator_prompt = f"""You are the Curator — a fast, friendly, and strictly truthful assistant for The Council.
+    # First message greeting
+    if is_first_message:
+        greeting = """Hello and welcome to The Council.
+
+I'm the Curator — your fast assistant.
+
+The Council (Researcher, Critic, Planner, Judge) delivers bold, visionary 4-item portfolios with deep reasoning — but each deliberation takes ~12 minutes.
+
+To make the most of that time, let's refine your idea first.
+
+When ready, I'll ask for confirmation before starting the full council.
+
+How can I help today?"""
+        curator_prompt = f"""You are the Curator — a fast, friendly, and strictly truthful assistant for The Council.
+
+On the first message, respond with this exact greeting:
+{greeting}
+
+Then wait for the user's response."""
+    else:
+        curator_prompt = f"""You are the Curator — a fast, friendly, and strictly truthful assistant for The Council.
 CORE RULES:
 - NEVER invent context, previous conversations, or details that don't exist.
 - ONLY use information from the current message and actual session history.
-- If this is the first message, greet simply and ask how to help.
 - Be casual, warm, and concise — like a helpful friend.
 - Help refine the query naturally.
 - ONLY ask for deliberation when the query is clear: "I have a refined query: '[query]'. Ready for full council (~12 min)? (yes/no)"
@@ -84,6 +129,11 @@ History: {history_summary}"""
             has_confirmation_language and
             has_refined_query
         )
+        
+        # Save to persistent memory
+        conversation_history.append({"role": "user", "content": prompt})
+        conversation_history.append({"role": "assistant", "content": curator_output})
+        save_memory(conversation_history)
         
         return {
             "output": curator_output,

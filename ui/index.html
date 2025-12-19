@@ -34,6 +34,25 @@
     const form = document.getElementById('input-form');
     const input = document.getElementById('user-input');
 
+    // Load conversation history on page load
+    async function loadHistory() {
+      try {
+        const response = await fetch('/memory');
+        if (response.ok) {
+          const history = await response.json();
+          history.forEach(msg => {
+            const className = msg.role === 'user' ? 'bg-gray-700 text-white' : 'agent-cur';
+            addMessage(msg.role === 'user' ? 'You' : 'Curator', msg.content, className);
+          });
+        }
+      } catch (e) {
+        console.log('No history found or error loading');
+      }
+    }
+
+    // Load history when page loads
+    loadHistory();
+
     async function sendMessage() {
       const userText = input.value.trim();
       if (!userText) return;

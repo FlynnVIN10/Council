@@ -44,8 +44,26 @@ async def council_stream(prompt: str):
     loop = asyncio.get_event_loop()
     
     try:
-        # Run Curator first (fast)
-        curator_result = await loop.run_in_executor(None, run_curator_only, prompt, None)
+        # Load persistent memory
+        history = load_memory()
+        
+        # Check if user said "yes" to confirmation
+        is_confirmation = prompt.lower().strip() == "yes"
+        
+        # If confirmation, use the last refined query from history
+        if is_confirmation and history:
+            # Find the last refined query from Curator
+            refined_query = prompt  # fallback
+            for i in range(len(history) - 1, -1, -1):
+                if history[i]['role'] == 'assistant' and 'refined query' in history[i]['content'].lower():
+                    # Extract query from previous user message
+                    if i > 0 and history[i-1]['role'] == 'user':
+                        refined_query = history[i-1]['content']
+                    break
+            prompt = refined_query
+        
+        # Run Curator first (fast) - pass history for context
+        curator_result = await loop.run_in_executor(None, run_curator_only, prompt, history)
         
         if "error" in curator_result:
             yield f"data: {json.dumps({'type': 'error', 'content': curator_result['error']})}\n\n"
@@ -61,14 +79,12 @@ async def council_stream(prompt: str):
         # Check if self-improvement mode (bypass curator refinement)
         is_self_improve = "self-improvement mode" in prompt.lower() or "self-improve" in prompt.lower()
         
-        # If asking for confirmation and not self-improve mode, stop here
-        if curator_result.get('asking_confirmation') and not is_self_improve:
-            # Send any remaining content first
-            yield f"data: {json.dumps({'type': 'content', 'content': '\\n\\nReady for full council deliberation? (Full deliberation will take ~12 minutes)'})}\n\n"
+        # If asking for confirmation and not self-improve mode, stop here (unless user said "yes")
+        if curator_result.get('asking_confirmation') and not is_self_improve and not is_confirmation:
             yield f"data: {json.dumps({'done': True, 'needs_confirmation': True})}\n\n"
             return
         
-        # Run full council
+        # Run full council (either on "yes" confirmation or self-improve mode)
         result = await loop.run_in_executor(None, run_council_sync, prompt, None, is_self_improve)
         
         if "error" in result:
@@ -98,6 +114,11 @@ async def council_stream(prompt: str):
     except Exception as e:
         yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
         yield f"data: {json.dumps({'done': True})}\n\n"
+
+@app.get("/memory")
+async def get_memory():
+    """Get conversation history"""
+    return load_memory()
 
 @app.get("/chat")
 async def chat_endpoint(message: str = Query(...)):
