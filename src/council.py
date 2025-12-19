@@ -200,7 +200,7 @@ Prompt: {prompt}"""
                     cleaned_lines.append(line)
             curator_output = '\n'.join(cleaned_lines).strip()
             
-        print(f"Curator complete: {len(curator_output)} chars\n")
+            print(f"Curator complete: {len(curator_output)} chars")
         except KeyboardInterrupt:
             raise  # Re-raise to be handled by caller
         except Exception as e:
@@ -249,7 +249,7 @@ Provide detailed reasoning, examples, risks, and rewards."""
     
     try:
         research_output = ollama_completion([{"role": "user", "content": researcher_prompt}])
-        print(f"Researcher complete: {len(research_output)} chars\n")
+        print(f"Researcher complete: {len(research_output)} chars")
     except KeyboardInterrupt:
         raise  # Re-raise to be handled by caller
     except Exception as e:
@@ -276,7 +276,7 @@ Output sharp, focused critique that forces greater ambition."""
     
     try:
         critic_output = ollama_completion([{"role": "user", "content": critic_prompt}])
-        print(f"Critic complete: {len(critic_output)} chars\n")
+        print(f"Critic complete: {len(critic_output)} chars")
     except KeyboardInterrupt:
         raise  # Re-raise to be handled by caller
     except Exception as e:
@@ -308,7 +308,7 @@ Output a clear, numbered multi-track action plan with timelines."""
     
     try:
         planner_output = ollama_completion([{"role": "user", "content": planner_prompt}])
-        print(f"Planner complete: {len(planner_output)} chars\n")
+        print(f"Planner complete: {len(planner_output)} chars")
     except KeyboardInterrupt:
         raise  # Re-raise to be handled by caller
     except Exception as e:
@@ -385,7 +385,7 @@ Now synthesize a complete 4-item portfolio."""
     
     try:
         judge_output = ollama_completion([{"role": "user", "content": judge_prompt}])
-        print(f"Judge complete: {len(judge_output)} chars\n")
+        print(f"Judge complete: {len(judge_output)} chars")
     except KeyboardInterrupt:
         raise  # Re-raise to be handled by caller
     except Exception as e:
