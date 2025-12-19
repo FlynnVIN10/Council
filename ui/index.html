@@ -34,73 +34,58 @@
     const form = document.getElementById('input-form');
     const input = document.getElementById('user-input');
 
-    // Load conversation history from localStorage
-    function loadHistory() {
-      const history = JSON.parse(localStorage.getItem('council-history') || '[]');
-      history.forEach(msg => {
-        addMessage(msg.sender, msg.content, msg.className, false);
-      });
-    }
-
-    // Save message to localStorage
-    function saveMessage(sender, content, className) {
-      const history = JSON.parse(localStorage.getItem('council-history') || '[]');
-      history.push({ sender, content, className, timestamp: Date.now() });
-      localStorage.setItem('council-history', JSON.stringify(history));
-    }
-
     async function sendMessage() {
       const userText = input.value.trim();
       if (!userText) return;
-      
       addMessage('You', userText, 'bg-gray-700 text-white');
-      saveMessage('You', userText, 'bg-gray-700 text-white');
       input.value = '';
       input.disabled = true;
       form.querySelector('button').disabled = true;
 
-      try {
-        const response = await fetch('/council', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: userText })
-        });
-
-        if (!response.ok) throw new Error('Request failed');
-
-        const data = await response.json();
+      const eventSource = new EventSource(`/chat?message=${encodeURIComponent(userText)}`);
+      
+      let currentAgent = null;
+      let currentMessage = null;
+      
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
         
-        // Display each agent's output
-        if (data.agents) {
-          data.agents.forEach(agent => {
-            const agentName = agent.name || 'Unknown';
-            const output = agent.output || '';
-            if (output) {
-              const className = getAgentClass(agentName);
-              addMessage(agentName, output, className);
-              saveMessage(agentName, output, className);
-            }
-          });
+        if (data.type === 'agent' && data.agent) {
+          // New agent starting - create new message bubble
+          currentAgent = data.agent;
+          currentMessage = addMessage(data.agent, '', getAgentClass(data.agent), true);
         }
+        
+        if (data.type === 'content' && data.content && currentMessage) {
+          // Append content to current message
+          const p = currentMessage.querySelector('p');
+          if (p) {
+            p.textContent += data.content;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+          }
+        }
+        
+        if (data.type === 'error') {
+          addMessage('Error', data.content, 'bg-red-900/50 border-red-600');
+        }
+        
+        if (data.done) {
+          eventSource.close();
+          input.disabled = false;
+          form.querySelector('button').disabled = false;
+          input.focus();
+        }
+      };
 
-        // Display final answer
-        if (data.final_answer) {
-          addMessage('Final Answer', data.final_answer, 'final');
-          saveMessage('Final Answer', data.final_answer, 'final');
+      eventSource.onerror = () => {
+        eventSource.close();
+        if (currentMessage) {
+          currentMessage.querySelector('p').textContent += "\n\n[Stream ended]";
         }
-
-        // Display reasoning summary
-        if (data.reasoning_summary) {
-          addMessage('Reasoning', data.reasoning_summary, 'bg-gray-800');
-          saveMessage('Reasoning', data.reasoning_summary, 'bg-gray-800');
-        }
-      } catch (error) {
-        addMessage('Error', `Failed to get response: ${error.message}`, 'bg-red-900/50 border-red-600');
-      } finally {
         input.disabled = false;
         form.querySelector('button').disabled = false;
         input.focus();
-      }
+      };
     }
 
     function addMessage(sender, content, className, streaming = false) {
@@ -113,14 +98,7 @@
     }
 
     function getAgentClass(agent) {
-      const map = { 
-        Curator: 'agent-cur', 
-        Researcher: 'agent-res', 
-        Critic: 'agent-cri', 
-        Planner: 'agent-pla', 
-        Judge: 'agent-jud', 
-        'Final Answer': 'final' 
-      };
+      const map = { Curator: 'agent-cur', Researcher: 'agent-res', Critic: 'agent-cri', Planner: 'agent-pla', Judge: 'agent-jud', Final: 'final' };
       return map[agent] || 'bg-gray-800';
     }
 
@@ -129,8 +107,6 @@
       sendMessage();
     });
 
-    // Load history on page load
-    loadHistory();
     input.focus();
   </script>
 </body>
