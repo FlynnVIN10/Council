@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# The Council — Full Restart (runnable from anywhere)
+
+COUNCIL_DIR="/Users/Flynn/Documents/GitHub/Council"
+
+cd "$COUNCIL_DIR" || { echo "Error: Cannot access Council directory at $COUNCIL_DIR"; exit 1; }
+
 echo ""
 echo "================================================================="
 echo "                         THE COUNCIL"
@@ -20,11 +26,8 @@ echo "WELCOME"
 echo "================================================================="
 echo ""
 
-echo "Stopping existing Ollama processes..."
+echo "Stopping existing processes..."
 pkill -f "ollama serve" || true
-sleep 2
-
-echo "Stopping existing uvicorn processes..."
 pkill -f "uvicorn" || true
 sleep 2
 
@@ -34,9 +37,8 @@ nohup ollama serve > ollama.log 2>&1 &
 echo "Waiting for Ollama to initialize..."
 sleep 8
 
-# Uncomment the line below to automatically open the browser (macOS only)
-# open http://localhost:8000
-
-echo "Starting API server..."
+echo "Activating environment and starting API..."
 source venv/bin/activate
 uvicorn src.api.main:app --reload --port 8000
+
+echo "The Council is running at http://localhost:8000"

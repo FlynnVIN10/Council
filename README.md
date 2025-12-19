@@ -48,8 +48,14 @@ See `EXAMPLES.md` for sample prompts and outputs.
 
 Use the helper script for reliable restart:
 
+**From the repo directory:**
 ```bash
 ./council-restart.sh
+```
+
+**From anywhere (using absolute path):**
+```bash
+/Users/Flynn/Documents/GitHub/Council/council-restart.sh
 ```
 
 This:
@@ -58,16 +64,16 @@ This:
 - Activates venv
 - Starts API with reload on port 8000
 
-After running `./council-restart.sh`, open **http://localhost:8000** in your browser to access The Council web UI.
+After running the script, open **http://localhost:8000** in your browser to access The Council web UI.
 
 **Note**: The script uses robust process killing with proper waits to prevent port conflicts. Ollama output is logged to `ollama.log` for debugging.
 
-**Optional alias** (add to `~/.zshrc`):
+**Global alias** (add to `~/.zshrc` for access from anywhere):
 ```bash
-alias council-restart='cd /Users/Flynn/Documents/GitHub/Council && ./council-restart.sh'
+alias council-restart='/Users/Flynn/Documents/GitHub/Council/council-restart.sh'
 ```
 
-Then `source ~/.zshrc`
+Then `source ~/.zshrc` and you can run `council-restart` from any directory.
 
 ## CLI Experience (LLM-Style Conversation)
 
