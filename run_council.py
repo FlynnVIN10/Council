@@ -24,6 +24,9 @@ def interactive_mode():
 
     while True:
         try:
+            # Standard input() handles multi-line paste correctly:
+            # User can paste multi-line text, press Enter once, and input() returns the full text
+            # Processing only happens after Enter is pressed - no auto-trigger on paste
             user_input = input("\033[1;34mYou:\033[0m ").strip()
             
             if not user_input:
@@ -33,7 +36,7 @@ def interactive_mode():
                 print("\n\033[1;32mCouncil session ended. Goodbye!\033[0m")
                 break
 
-            # Check for Self-Improvement Mode trigger
+            # Check for Self-Improvement Mode trigger (only after Enter is pressed)
             is_self_improve_trigger = (
                 "self-improvement mode" in user_input.lower() or 
                 "self-improve" in user_input.lower()
@@ -131,7 +134,46 @@ def interactive_mode():
                     refined_query = None
                     curator_history = []  # Reset after full council run
                     
-                    # Continue to display full council results below
+                    # Display full council results
+                    if "error" in result:
+                        print(f"\n\033[1;31mError: {result['error']}\033[0m")
+                        continue
+
+                    # Display full chain of thought (skip Curator, start with Researcher)
+                    print("\033[1;35mResearcher (bold exploration):\033[0m")
+                    print(result['agents'][1]['output'])
+                    print("\n\033[1;31mCritic (contrarian challenge):\033[0m")
+                    print(result['agents'][2]['output'])
+                    print("\n\033[1;36mPlanner (multi-track strategy):\033[0m")
+                    print(result['agents'][3]['output'])
+                    print("\n\033[1;32mJudge (visionary synthesis):\033[0m")
+                    print(result['agents'][4]['output'])
+
+                    print("\n" + "="*60)
+                    print("\033[1;37mFINAL COUNCIL ANSWER\033[0m")
+                    print("="*60)
+                    print(result['final_answer'])
+                    print("\n\033[1;37mREASONING SUMMARY\033[0m")
+                    print(result['reasoning_summary'])
+
+                    # Handle self-improvement proposal
+                    if result.get("is_self_improve") and "proposal" in result:
+                        last_proposal = result["proposal"]
+                        print("\n" + "="*60)
+                        print("\033[1;33m🔧 SELF-IMPROVEMENT PROPOSAL GENERATED\033[0m")
+                        print("="*60)
+                        if "description" in last_proposal:
+                            print(f"\n\033[1;36mProposal:\033[0m {last_proposal['description']}")
+                        if "file_changes" in last_proposal:
+                            print(f"\n\033[1;36mFiles to modify:\033[0m {', '.join(last_proposal['file_changes'].keys())}")
+                        if "impact" in last_proposal:
+                            print(f"\n\033[1;36mExpected Impact:\033[0m {last_proposal['impact']}")
+                        print("\n\033[1;33mTo approve and execute, type: 'Approved. Proceed'\033[0m")
+                    else:
+                        last_proposal = None
+
+                    # Clean return to prompt - user can scroll up for history
+                    continue
                 else:
                     # Continue conversation with Curator
                     curator_history.append({"role": "user", "content": user_input})
@@ -208,53 +250,6 @@ def interactive_mode():
                     # Curator is still refining, continue conversation
                     # Clean return to prompt
                     continue
-            
-            # Full council results display (only reached after "yes" confirmation)
-            if "error" in result:
-                print(f"\n\033[1;31mError: {result['error']}\033[0m")
-                continue
-
-            # Display full chain of thought
-            print("\033[1;36mCurator (fast assistant):\033[0m")
-            print(result['agents'][0]['output'])
-            print("\n\033[1;35mResearcher (bold exploration):\033[0m")
-            print(result['agents'][1]['output'])
-            print("\n\033[1;31mCritic (contrarian challenge):\033[0m")
-            print(result['agents'][2]['output'])
-            print("\n\033[1;36mPlanner (multi-track strategy):\033[0m")
-            print(result['agents'][3]['output'])
-            print("\n\033[1;32mJudge (visionary synthesis):\033[0m")
-            print(result['agents'][4]['output'])
-
-            print("\n" + "="*60)
-            print("\033[1;37mFINAL COUNCIL ANSWER\033[0m")
-            print("="*60)
-            print(result['final_answer'])
-            print("\n\033[1;37mREASONING SUMMARY\033[0m")
-            print(result['reasoning_summary'])
-
-            # Handle self-improvement proposal
-            if result.get("is_self_improve") and "proposal" in result:
-                last_proposal = result["proposal"]
-                print("\n" + "="*60)
-                print("\033[1;33m🔧 SELF-IMPROVEMENT PROPOSAL GENERATED\033[0m")
-                print("="*60)
-                if "description" in last_proposal:
-                    print(f"\n\033[1;36mProposal:\033[0m {last_proposal['description']}")
-                if "file_changes" in last_proposal:
-                    print(f"\n\033[1;36mFiles to modify:\033[0m {', '.join(last_proposal['file_changes'].keys())}")
-                if "impact" in last_proposal:
-                    print(f"\n\033[1;36mExpected Impact:\033[0m {last_proposal['impact']}")
-                print("\n\033[1;33mTo approve and execute, type: 'Approved. Proceed'\033[0m")
-            else:
-                last_proposal = None
-
-            # Update history
-            history.append({"role": "user", "content": user_input})
-            history.append({"role": "assistant", "content": result['final_answer']})
-
-            # Clean return to prompt - user can scroll up for history
-            continue
 
         except KeyboardInterrupt:
             print("\n\n\033[1;32mSession interrupted. Goodbye!\033[0m")
