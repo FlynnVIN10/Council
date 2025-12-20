@@ -93,9 +93,7 @@ def interactive_mode():
                 waiting_for_confirmation = False
                 refined_query = None
 
-                print("\n" + "-"*60)
-                input("\033[1;34mPress Enter for next message...\033[0m")
-                print_header()
+                # Clean return to prompt - user can scroll up for history
                 continue
 
             # Handle approval for self-improvement
@@ -109,11 +107,9 @@ def interactive_mode():
                     if "branch" in result:
                         print(f"Branch: {result['branch']}\n")
                 last_proposal = None  # Clear after execution
-                print("\n" + "-"*60)
-                input("\033[1;34mPress Enter for next message...\033[0m")
-                print_header()
                 curator_history = []  # Reset curator conversation
                 waiting_for_confirmation = False
+                # Clean return to prompt
                 continue
 
             # Handle confirmation response
@@ -171,9 +167,7 @@ def interactive_mode():
                     else:
                         waiting_for_confirmation = False
                     
-                    print("\n" + "-"*60)
-                    input("\033[1;34mPress Enter for next message...\033[0m")
-                    print_header()
+                    # Clean return to prompt - continue conversation
                     continue
             else:
                 # Normal flow: Run Curator first
@@ -212,9 +206,7 @@ def interactive_mode():
                     continue  # Wait for user's yes/no response
                 else:
                     # Curator is still refining, continue conversation
-                    print("\n" + "-"*60)
-                    input("\033[1;34mPress Enter for next message...\033[0m")
-                    print_header()
+                    # Clean return to prompt
                     continue
             
             # Full council results display (only reached after "yes" confirmation)
@@ -261,9 +253,8 @@ def interactive_mode():
             history.append({"role": "user", "content": user_input})
             history.append({"role": "assistant", "content": result['final_answer']})
 
-            print("\n" + "-"*60)
-            input("\033[1;34mPress Enter for next message...\033[0m")  # Pause for readability
-            print_header()
+            # Clean return to prompt - user can scroll up for history
+            continue
 
         except KeyboardInterrupt:
             print("\n\n\033[1;32mSession interrupted. Goodbye!\033[0m")
