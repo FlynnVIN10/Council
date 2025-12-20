@@ -27,7 +27,7 @@ def save_memory(history):
     except Exception as e:
         print(f"Warning: Failed to save memory: {e}")
 
-def run_curator_only(prompt: str, conversation_history: list = None) -> dict:
+def run_curator_only(prompt: str, conversation_history: list = None, stream: bool = False) -> dict:
     """
     Run only the Curator agent for fast, conversational query refinement.
     Returns Curator output and whether it's asking for confirmation.
@@ -84,11 +84,28 @@ Current message: {prompt}
 History: {history_summary}"""
     
     try:
-        curator_output = ollama_completion(
-            [{"role": "user", "content": curator_prompt}],
-            max_tokens=300,  # Hard cap — very fast
-            temperature=0.8  # Slightly lower for reliability
-        )
+        if stream:
+            # Streaming mode - print chunks as they arrive
+            print("\033[1;36mCurator (fast assistant):\033[0m ", end="", flush=True)
+            full_output = ""
+            stream_gen = ollama_completion(
+                [{"role": "user", "content": curator_prompt}],
+                stream=True,
+                max_tokens=300,  # Hard cap — very fast
+                temperature=0.8  # Slightly lower for reliability
+            )
+            for chunk in stream_gen:
+                print(chunk, end="", flush=True)
+                full_output += chunk
+            print()  # New line after streaming
+            curator_output = full_output
+        else:
+            # Non-streaming mode (for API compatibility)
+            curator_output = ollama_completion(
+                [{"role": "user", "content": curator_prompt}],
+                max_tokens=300,  # Hard cap — very fast
+                temperature=0.8  # Slightly lower for reliability
+            )
         
         # Clean output - remove any model prefixes, artifacts, or leaked lines
         curator_output = curator_output.strip()
@@ -147,7 +164,7 @@ History: {history_summary}"""
     except Exception as e:
         return {"error": f"Curator failed: {str(e)}"}
 
-def run_council_sync(prompt: str, previous_proposal: dict = None, skip_curator: bool = False) -> dict:
+def run_council_sync(prompt: str, previous_proposal: dict = None, skip_curator: bool = False, stream: bool = False) -> dict:
     """
     Run the council with sequential agent calls using direct LiteLLM.
     Bypasses CrewAI's problematic LLM routing while maintaining the council pattern.
@@ -218,7 +235,10 @@ def run_council_sync(prompt: str, previous_proposal: dict = None, skip_curator: 
     curator_output = ""
     if not skip_curator:
         print("Starting council – loading model (first run only, please wait)...")
-        print("\nRunning Curator (fast assistant)...")
+        if stream:
+            print("\033[1;36mCurator (fast assistant):\033[0m ", end="", flush=True)
+        else:
+            print("\nRunning Curator (fast assistant)...")
         curator_prompt = f"""You are the Curator — a fast, friendly, and strictly truthful assistant for The Council.
 CORE RULES:
 - NEVER invent context, previous conversations, or details that don't exist.
@@ -229,11 +249,25 @@ Keep your response short and natural (under 100 words).
 Prompt: {prompt}"""
         
         try:
-            curator_output = ollama_completion(
-                [{"role": "user", "content": curator_prompt}],
-                max_tokens=300,  # Hard cap — very fast
-                temperature=0.8  # Slightly lower for reliability
-            )
+            if stream:
+                full_output = ""
+                stream_gen = ollama_completion(
+                    [{"role": "user", "content": curator_prompt}],
+                    stream=True,
+                    max_tokens=300,  # Hard cap — very fast
+                    temperature=0.8  # Slightly lower for reliability
+                )
+                for chunk in stream_gen:
+                    print(chunk, end="", flush=True)
+                    full_output += chunk
+                print()  # New line after streaming
+                curator_output = full_output
+            else:
+                curator_output = ollama_completion(
+                    [{"role": "user", "content": curator_prompt}],
+                    max_tokens=300,  # Hard cap — very fast
+                    temperature=0.8  # Slightly lower for reliability
+                )
             
             # Clean output - remove any model prefixes, artifacts, or leaked lines
             curator_output = curator_output.strip()
@@ -252,18 +286,23 @@ Prompt: {prompt}"""
                     cleaned_lines.append(line)
             curator_output = '\n'.join(cleaned_lines).strip()
             
-            print(f"Curator complete: {len(curator_output)} chars")
+            if not stream:
+                print(f"Curator complete: {len(curator_output)} chars")
         except KeyboardInterrupt:
             raise  # Re-raise to be handled by caller
         except Exception as e:
             return {"error": f"Curator failed: {str(e)}"}
     else:
         # When skipping Curator (after confirmation), show a message
-        print("Starting council – loading model (first run only, please wait)...")
+        if not stream:
+            print("Starting council – loading model (first run only, please wait)...")
         curator_output = f"Curator: Understood. Deliberation beginning with refined query: {prompt}"
     
     # Researcher agent
-    print("Running Researcher (bold exploration)...")
+    if stream:
+        print("\033[1;35mResearcher (bold exploration):\033[0m ", end="", flush=True)
+    else:
+        print("Running Researcher (bold exploration)...")
     
     if is_self_improve_mode:
         researcher_prompt = f"""You are the Researcher agent analyzing the Council codebase for self-improvement.
@@ -300,15 +339,27 @@ Prompt: {prompt}
 Provide detailed reasoning, examples, risks, and rewards."""
     
     try:
-        research_output = ollama_completion([{"role": "user", "content": researcher_prompt}])
-        print(f"Researcher complete: {len(research_output)} chars")
+        if stream:
+            full_output = ""
+            stream_gen = ollama_completion([{"role": "user", "content": researcher_prompt}], stream=True)
+            for chunk in stream_gen:
+                print(chunk, end="", flush=True)
+                full_output += chunk
+            print()  # New line after streaming
+            research_output = full_output
+        else:
+            research_output = ollama_completion([{"role": "user", "content": researcher_prompt}])
+            print(f"Researcher complete: {len(research_output)} chars")
     except KeyboardInterrupt:
         raise  # Re-raise to be handled by caller
     except Exception as e:
         return {"error": f"Researcher failed: {str(e)}"}
 
     # Critic agent
-    print("Running Critic (contrarian challenge)...")
+    if stream:
+        print("\033[1;31mCritic (contrarian challenge):\033[0m ", end="", flush=True)
+    else:
+        print("Running Critic (contrarian challenge)...")
     if is_self_improve_mode:
         critic_prompt = f"""You are the Critic agent reviewing the Researcher's codebase improvement proposal.
 Your task: Challenge the proposal rigorously. Is it high-leverage enough? Could it be bolder? Are there risks or edge cases?
@@ -327,15 +378,27 @@ Prompt: {prompt}
 Output sharp, focused critique that forces greater ambition."""
     
     try:
-        critic_output = ollama_completion([{"role": "user", "content": critic_prompt}])
-        print(f"Critic complete: {len(critic_output)} chars")
+        if stream:
+            full_output = ""
+            stream_gen = ollama_completion([{"role": "user", "content": critic_prompt}], stream=True)
+            for chunk in stream_gen:
+                print(chunk, end="", flush=True)
+                full_output += chunk
+            print()  # New line after streaming
+            critic_output = full_output
+        else:
+            critic_output = ollama_completion([{"role": "user", "content": critic_prompt}])
+            print(f"Critic complete: {len(critic_output)} chars")
     except KeyboardInterrupt:
         raise  # Re-raise to be handled by caller
     except Exception as e:
         return {"error": f"Critic failed: {str(e)}"}
 
     # Planner agent
-    print("Running Planner (multi-track strategy)...")
+    if stream:
+        print("\033[1;33mPlanner (multi-track strategy):\033[0m ", end="", flush=True)
+    else:
+        print("Running Planner (multi-track strategy)...")
     if is_self_improve_mode:
         planner_prompt = f"""You are the Planner agent structuring the codebase improvement proposal.
 Your task: Turn the improvement idea into a concrete implementation plan with specific file changes.
@@ -359,15 +422,27 @@ Prompt: {prompt}
 Output a clear, numbered multi-track action plan with timelines."""
     
     try:
-        planner_output = ollama_completion([{"role": "user", "content": planner_prompt}])
-        print(f"Planner complete: {len(planner_output)} chars")
+        if stream:
+            full_output = ""
+            stream_gen = ollama_completion([{"role": "user", "content": planner_prompt}], stream=True)
+            for chunk in stream_gen:
+                print(chunk, end="", flush=True)
+                full_output += chunk
+            print()  # New line after streaming
+            planner_output = full_output
+        else:
+            planner_output = ollama_completion([{"role": "user", "content": planner_prompt}])
+            print(f"Planner complete: {len(planner_output)} chars")
     except KeyboardInterrupt:
         raise  # Re-raise to be handled by caller
     except Exception as e:
         return {"error": f"Planner failed: {str(e)}"}
 
     # Judge/Synthesizer agent
-    print("Running Judge (visionary synthesis)...\n")
+    if stream:
+        print("\033[1;32mJudge (visionary synthesis):\033[0m ", end="", flush=True)
+    else:
+        print("Running Judge (visionary synthesis)...\n")
     if is_self_improve_mode:
         judge_prompt = f"""You are the Judge/Synthesizer creating a formal self-improvement proposal for the Council codebase.
 
@@ -436,8 +511,17 @@ Prompt: {prompt}
 Now synthesize a complete 4-item portfolio."""
     
     try:
-        judge_output = ollama_completion([{"role": "user", "content": judge_prompt}])
-        print(f"Judge complete: {len(judge_output)} chars")
+        if stream:
+            full_output = ""
+            stream_gen = ollama_completion([{"role": "user", "content": judge_prompt}], stream=True)
+            for chunk in stream_gen:
+                print(chunk, end="", flush=True)
+                full_output += chunk
+            print("\n")  # New line after streaming
+            judge_output = full_output
+        else:
+            judge_output = ollama_completion([{"role": "user", "content": judge_prompt}])
+            print(f"Judge complete: {len(judge_output)} chars")
     except KeyboardInterrupt:
         raise  # Re-raise to be handled by caller
     except Exception as e:

@@ -46,7 +46,7 @@ def interactive_mode():
             if is_self_improve_trigger:
                 print("\n\033[1;36mCurator:\033[0m Entering Self-Improvement Mode — the full council will now deliberate on a self-evolution proposal (~12 minutes).\n")
                 try:
-                    result = run_council_sync(user_input, skip_curator=True)
+                    result = run_council_sync(user_input, skip_curator=True, stream=True)
                 except KeyboardInterrupt:
                     print("\n\n\033[1;31mDeliberation interrupted by user.\033[0m")
                     print("Returning to Curator...\n")
@@ -57,18 +57,7 @@ def interactive_mode():
                     print(f"\n\033[1;31mError: {result['error']}\033[0m")
                     continue
                 
-                # Display full chain of thought (skip Curator, start with Researcher)
-                print("\033[1;35mResearcher (bold exploration):\033[0m")
-                # When skip_curator=True, Curator is still at index 0 but empty/placeholder
-                # Researcher is at index 1
-                print(result['agents'][1]['output'])
-                print("\n\033[1;31mCritic (contrarian challenge):\033[0m")
-                print(result['agents'][2]['output'])
-                print("\n\033[1;36mPlanner (multi-track strategy):\033[0m")
-                print(result['agents'][3]['output'])
-                print("\n\033[1;32mJudge (visionary synthesis):\033[0m")
-                print(result['agents'][4]['output'])
-
+                # Display final answer (streaming already printed agent outputs)
                 print("\n" + "="*60)
                 print("\033[1;37mFINAL COUNCIL ANSWER\033[0m")
                 print("="*60)
@@ -122,7 +111,7 @@ def interactive_mode():
                     query_to_use = refined_query if refined_query else user_input
                     print("\n\033[1;33mThe Council is deliberating...\033[0m\n")
                     try:
-                        result = run_council_sync(query_to_use, skip_curator=True)
+                        result = run_council_sync(query_to_use, skip_curator=True, stream=True)
                     except KeyboardInterrupt:
                         print("\n\n\033[1;31mDeliberation interrupted by user.\033[0m")
                         print("Returning to Curator...\n")
@@ -134,20 +123,10 @@ def interactive_mode():
                     refined_query = None
                     curator_history = []  # Reset after full council run
                     
-                    # Display full council results
+                    # Display final answer (streaming already printed agent outputs)
                     if "error" in result:
                         print(f"\n\033[1;31mError: {result['error']}\033[0m")
                         continue
-
-                    # Display full chain of thought (skip Curator, start with Researcher)
-                    print("\033[1;35mResearcher (bold exploration):\033[0m")
-                    print(result['agents'][1]['output'])
-                    print("\n\033[1;31mCritic (contrarian challenge):\033[0m")
-                    print(result['agents'][2]['output'])
-                    print("\n\033[1;36mPlanner (multi-track strategy):\033[0m")
-                    print(result['agents'][3]['output'])
-                    print("\n\033[1;32mJudge (visionary synthesis):\033[0m")
-                    print(result['agents'][4]['output'])
 
                     print("\n" + "="*60)
                     print("\033[1;37mFINAL COUNCIL ANSWER\033[0m")
@@ -178,7 +157,7 @@ def interactive_mode():
                     # Continue conversation with Curator
                     curator_history.append({"role": "user", "content": user_input})
                     try:
-                        curator_result = run_curator_only(user_input, curator_history)
+                        curator_result = run_curator_only(user_input, curator_history, stream=True)
                     except KeyboardInterrupt:
                         print("\n\n\033[1;31mCurator interrupted by user.\033[0m")
                         print("Returning to input...\n")
@@ -189,9 +168,7 @@ def interactive_mode():
                         print(f"\n\033[1;31mError: {curator_result['error']}\033[0m")
                         continue
                     
-                    # Print single clean Curator response
-                    print("\033[1;36mCurator (fast assistant):\033[0m")
-                    print(curator_result['output'].strip())
+                    # Output already streamed, no need to print again
                     print()  # Single blank line for separation
                     
                     curator_history.append({"role": "assistant", "content": curator_result['output']})
@@ -213,10 +190,9 @@ def interactive_mode():
                     continue
             else:
                 # Normal flow: Run Curator first
-                print("\n\033[1;33mThe Council (Curator) engaging...\033[0m\n")
                 curator_history.append({"role": "user", "content": user_input})
                 try:
-                    curator_result = run_curator_only(user_input, curator_history)
+                    curator_result = run_curator_only(user_input, curator_history, stream=True)
                 except KeyboardInterrupt:
                     print("\n\n\033[1;31mCurator interrupted by user.\033[0m")
                     print("Returning to input...\n")
@@ -227,8 +203,7 @@ def interactive_mode():
                     print(f"\n\033[1;31mError: {curator_result['error']}\033[0m")
                     continue
                 
-                print("\033[1;36mCurator (fast assistant):\033[0m")
-                print(curator_result['output'])
+                # Output already streamed, no need to print again
                 
                 curator_history.append({"role": "assistant", "content": curator_result['output']})
                 
