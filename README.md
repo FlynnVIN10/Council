@@ -16,6 +16,28 @@ See `EXAMPLES.md` for sample prompts and outputs.
 
 ## Quick Start
 
+### Global Commands (Run from Anywhere)
+
+Add these aliases to your shell profile (`~/.zshrc` or `~/.bash_profile`):
+
+```bash
+alias council-up='cd /Users/Flynn/Documents/GitHub/Council && docker-compose up --build'
+alias council-restart='cd /Users/Flynn/Documents/GitHub/Council && docker-compose down && docker-compose up --build'
+alias council-down='cd /Users/Flynn/Documents/GitHub/Council && docker-compose down'
+```
+
+Then reload your shell:
+```bash
+source ~/.zshrc   # or source ~/.bash_profile
+```
+
+Now use from **anywhere**:
+- `council-up` → start fresh
+- `council-restart` → full clean restart
+- `council-down` → stop all containers
+
+**Note**: Adjust the path if your repo moves.
+
 ### Docker Deployment (Recommended for Portability)
 
 The easiest way to run The Council consistently on any machine:
@@ -23,6 +45,8 @@ The easiest way to run The Council consistently on any machine:
 ```bash
 docker-compose up --build
 ```
+
+Or use the global alias: `council-up`
 
 - Starts Ollama and The Council CLI
 - Drops directly into interactive "You:" prompt
@@ -33,6 +57,8 @@ To restart cleanly:
 ```bash
 docker-compose down && docker-compose up --build
 ```
+
+Or use: `council-restart`
 
 **Note**: First run will download the phi3:mini model (~2.3GB), which takes a few minutes.
 
@@ -72,6 +98,10 @@ python run_council.py "Your prompt here"  # Single-shot
 
 ## Full Platform Control
 
+**Recommended: Use global aliases** (see Quick Start section above)
+
+**Alternative: Local scripts** (use as fallbacks)
+
 **Start:**
 ```bash
 ./council-restart.sh
@@ -86,13 +116,7 @@ Conversation flows naturally with the Curator and full council deliberation on d
 ```
 Cleanly shuts down all containers and processes.
 
-**Global aliases** (add to `~/.zshrc` for access from anywhere):
-```bash
-alias council-restart='/Users/Flynn/Documents/GitHub/Council/council-restart.sh'
-alias council-down='/Users/Flynn/Documents/GitHub/Council/council-down.sh'
-```
-
-Then `source ~/.zshrc` and you can run `council-restart` or `council-down` from any directory.
+**Note**: For daily convenience, use the global aliases (`council-up`, `council-restart`, `council-down`) from the Quick Start section.
 
 ## CLI Experience (LLM-Style Conversation)
 

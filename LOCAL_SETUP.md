@@ -92,7 +92,31 @@ python run_council.py
 python run_council.py "Test prompt: What is the capital of France?"
 ```
 
-### Full Platform Control
+### Global Commands (Run from Anywhere)
+
+Add these aliases to your shell profile (`~/.zshrc` or `~/.bash_profile`):
+
+```bash
+alias council-up='cd /Users/Flynn/Documents/GitHub/Council && docker-compose up --build'
+alias council-restart='cd /Users/Flynn/Documents/GitHub/Council && docker-compose down && docker-compose up --build'
+alias council-down='cd /Users/Flynn/Documents/GitHub/Council && docker-compose down'
+```
+
+Then reload your shell:
+```bash
+source ~/.zshrc   # or source ~/.bash_profile
+```
+
+Now use from **anywhere**:
+- `council-up` → start fresh
+- `council-restart` → full clean restart
+- `council-down` → stop all containers
+
+**Note**: Adjust the path if your repo moves.
+
+### Full Platform Control (Local Scripts)
+
+**Alternative: Use local scripts** (as fallbacks)
 
 **Start:**
 ```bash
@@ -108,13 +132,7 @@ Conversation flows naturally with the Curator and full council deliberation on d
 ```
 Cleanly shuts down all containers and processes.
 
-**Global aliases** (add to `~/.zshrc` for access from anywhere):
-```bash
-alias council-restart='/Users/Flynn/Documents/GitHub/Council/council-restart.sh'
-alias council-down='/Users/Flynn/Documents/GitHub/Council/council-down.sh'
-```
-
-Then `source ~/.zshrc` and you can run `council-restart` or `council-down` from any directory.
+**Note**: For daily convenience, use the global aliases above.
 
 
 ---
