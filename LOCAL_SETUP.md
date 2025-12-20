@@ -92,20 +92,29 @@ python run_council.py
 python run_council.py "Test prompt: What is the capital of France?"
 ```
 
-### Usage
+### Full Platform Control
 
-Run `./council-restart.sh`
-
+**Start:**
+```bash
+./council-restart.sh
+```
 The script starts Ollama and drops you directly into the interactive CLI prompt ("You:").
 
 Conversation flows naturally with the Curator and full council deliberation on demand.
 
-**Global alias** (add to `~/.zshrc` for access from anywhere):
+**Stop:**
+```bash
+./council-down.sh
+```
+Cleanly shuts down all containers and processes.
+
+**Global aliases** (add to `~/.zshrc` for access from anywhere):
 ```bash
 alias council-restart='/Users/Flynn/Documents/GitHub/Council/council-restart.sh'
+alias council-down='/Users/Flynn/Documents/GitHub/Council/council-down.sh'
 ```
 
-Then `source ~/.zshrc` and you can run `council-restart` from any directory.
+Then `source ~/.zshrc` and you can run `council-restart` or `council-down` from any directory.
 
 
 ---
