@@ -10,7 +10,9 @@ import asyncio
 app = FastAPI()
 
 # Persistent conversation history
-MEMORY_FILE = "memory.json"
+# Support Docker volume persistence via DATA_DIR environment variable
+DATA_DIR = os.getenv("DATA_DIR", ".")
+MEMORY_FILE = os.path.join(DATA_DIR, "memory.json")
 
 def load_memory():
     """Load conversation history from memory.json"""

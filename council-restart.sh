@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # The Council — Full Restart (runnable from anywhere)
+# Note: For full portability, Docker is recommended: docker-compose up --build
 
 COUNCIL_DIR="/Users/Flynn/Documents/GitHub/Council"
 

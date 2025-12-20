@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  council:
+    build: .
+    volumes:
+      - .:/app
+      - council_data:/app/data  # For memory.json, ledger, future SQLite
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - DATA_DIR=/app/data
+    tty: true
+    stdin_open: true
+
+volumes:
+  ollama_data:
+  council_data:
+

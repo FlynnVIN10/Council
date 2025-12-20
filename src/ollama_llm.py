@@ -20,10 +20,12 @@ def ollama_completion(messages: list, stream: bool = False, **kwargs):
     # Allow max_tokens to be overridden via kwargs, otherwise use env variable
     max_tokens = kwargs.pop("max_tokens", int(os.getenv("LLM_MAX_TOKENS", 500)))
     
+    # Support OLLAMA_HOST environment variable for Docker (defaults to localhost)
+    ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
     response = litellm.completion(
         model="ollama/phi3:mini",
         messages=messages,
-        api_base="http://localhost:11434",
+        api_base=ollama_host,
         temperature=kwargs.pop("temperature", float(os.getenv("LLM_TEMPERATURE", 0.7))),
         max_tokens=max_tokens,
         timeout=kwargs.pop("timeout", 1800),  # 30 minutes for slow CPU first load

@@ -16,6 +16,28 @@ See `EXAMPLES.md` for sample prompts and outputs.
 
 ## Quick Start
 
+### Docker Deployment (Recommended for Portability)
+
+The easiest way to run The Council consistently on any machine:
+
+```bash
+docker-compose up --build
+```
+
+- Starts Ollama and The Council CLI
+- Drops directly into interactive "You:" prompt
+- All memory and data persisted in volumes
+- Web UI still available at http://localhost:8000 if desired
+
+To restart cleanly:
+```bash
+docker-compose down && docker-compose up --build
+```
+
+**Note**: First run will download the phi3:mini model (~2.3GB), which takes a few minutes.
+
+### Local Development
+
 1. Follow `LOCAL_SETUP.md` to set up Ollama and models.
 2. Copy `.env.example` to `.env` and adjust if needed.
 3. Run: `./council-restart.sh`
