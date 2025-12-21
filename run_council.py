@@ -1,7 +1,20 @@
 import os
 import sys
+import subprocess
 from src.council import run_council_sync, run_curator_only
 from src.memory import get_recent_sessions
+
+def ensure_model():
+    """Ensure the phi3 model is pulled and available"""
+    try:
+        result = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0 and "phi3" not in result.stdout:
+            print("Pulling phi3 model (first run, please wait)...")
+            subprocess.run(["ollama", "pull", "phi3"], check=True)
+            print("Model pull complete.\n")
+    except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.CalledProcessError) as e:
+        # If ollama command fails or times out, continue anyway (might be starting up)
+        pass
 
 def print_header():
     os.system('cls' if os.name == 'nt' else 'clear')

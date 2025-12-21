@@ -23,7 +23,7 @@ def ollama_completion(messages: list, stream: bool = False, **kwargs):
     # Support OLLAMA_HOST environment variable for Docker (defaults to localhost)
     ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
     response = litellm.completion(
-        model="ollama/phi3:mini",
+        model="ollama/phi3",
         messages=messages,
         api_base=ollama_host,
         temperature=kwargs.pop("temperature", float(os.getenv("LLM_TEMPERATURE", 0.7))),

@@ -32,7 +32,7 @@ python run_council.py  # Interactive mode
 python run_council.py "Your prompt here"  # Single-shot
 ```
 
-**Note**: First run will download the phi3:mini model (~2.3GB), which takes a few minutes.
+**Note**: First run will automatically pull the phi3 model via `ollama pull phi3` (~2.3GB), which takes a few minutes.
 
 ### Docker Deployment (Optional)
 
@@ -60,7 +60,7 @@ docker-compose down && docker-compose up --build
 - **Important**: Always run `ollama serve` in a separate terminal before starting the council.
 - On your 2018 Mac with recommended settings (LLM_MAX_TOKENS=3700), expect ~12 minutes for a full council run.
 - Monitor RAM: Keep under 12GB usage to avoid swapping.
-- **Recommended model**: phi3:mini (capable on CPU).
+- **Recommended model**: phi3 (capable on CPU).
 
 ## Performance Expectations on 2018 MacBook Pro (CPU-only)
 
