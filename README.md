@@ -14,62 +14,9 @@ See `LOCAL_SETUP.md` for macOS installation steps.
 See `LOCAL_MODELS.md` for model recommendations.
 See `EXAMPLES.md` for sample prompts and outputs.
 
-## Quick Start
+## Quick Start (CLI-Only - Default)
 
-### Setup Global Commands (One-Time)
-
-Run these commands **once** to enable `council-up`/`council-restart`/`council-down` from anywhere:
-
-```bash
-echo "alias council-up='cd /Users/Flynn/Documents/GitHub/Council && docker-compose up --build'" >> ~/.zshrc
-echo "alias council-restart='cd /Users/Flynn/Documents/GitHub/Council && docker-compose down && docker-compose up --build'" >> ~/.zshrc
-echo "alias council-down='cd /Users/Flynn/Documents/GitHub/Council && docker-compose down'" >> ~/.zshrc
-source ~/.zshrc
-```
-
-**Important**: If you already added the aliases but they're not working in your current terminal, run:
-```bash
-source ~/.zshrc
-```
-Or simply open a new terminal window.
-
-**Test with:**
-```bash
-council-up
-```
-
-Now you can use from **anywhere**:
-- `council-up` → start fresh
-- `council-restart` → full clean restart
-- `council-down` → stop all containers
-
-**Note**: Adjust the path if your repo is in a different location.
-
-### Docker Deployment (Recommended for Portability)
-
-The easiest way to run The Council consistently on any machine:
-
-```bash
-docker-compose up --build
-```
-
-Or use the global alias: `council-up`
-
-- Starts Ollama and The Council CLI
-- Drops directly into interactive "You:" prompt
-- All memory and data persisted in volumes
-- Web UI still available at http://localhost:8000 if desired
-
-To restart cleanly:
-```bash
-docker-compose down && docker-compose up --build
-```
-
-Or use: `council-restart`
-
-**Note**: First run will download the phi3:mini model (~2.3GB), which takes a few minutes.
-
-### Local Development
+The Council runs CLI-only by default for simplicity and direct control.
 
 1. Follow `LOCAL_SETUP.md` to set up Ollama and models.
 2. Copy `.env.example` to `.env` and adjust if needed.
@@ -84,6 +31,28 @@ python run_council.py  # Interactive mode
 # or
 python run_council.py "Your prompt here"  # Single-shot
 ```
+
+**Note**: First run will download the phi3:mini model (~2.3GB), which takes a few minutes.
+
+### Docker Deployment (Optional)
+
+For portability or containerized environments, Docker is available as an explicit option:
+
+```bash
+docker-compose up --build
+```
+
+- Starts Ollama and The Council CLI in containers
+- Drops directly into interactive "You:" prompt
+- All memory and data persisted in volumes
+- Web UI available at http://localhost:8000 if desired
+
+To restart cleanly:
+```bash
+docker-compose down && docker-compose up --build
+```
+
+**Note**: Docker is optional — CLI-only is the default and recommended approach.
 
 ## Performance Notes
 
@@ -103,27 +72,25 @@ python run_council.py "Your prompt here"  # Single-shot
 
 **Tip**: Keep the terminal running `ollama serve` open between sessions to avoid reloading.
 
-## Full Platform Control
+## Running The Council
 
-**Recommended: Use global aliases** (see Quick Start section above)
-
-**Alternative: Local scripts** (use as fallbacks)
-
-**Start:**
+**Start (CLI-only - default):**
 ```bash
 ./council-restart.sh
 ```
-The script starts Ollama and drops you directly into the interactive CLI prompt ("You:").
+The script starts Ollama locally and drops you directly into the interactive CLI prompt ("You:").
 
 Conversation flows naturally with the Curator and full council deliberation on demand.
 
 **Stop:**
+Press `Ctrl+C` to exit the CLI, then:
 ```bash
-./council-down.sh
+pkill -f "ollama serve"
 ```
-Cleanly shuts down all containers and processes.
+This stops the local Ollama server.
 
-**Note**: For daily convenience, use the global aliases (`council-up`, `council-restart`, `council-down`) from the Quick Start section.
+**Docker (optional):**
+If using Docker, use `docker-compose down` to stop containers.
 
 ## CLI Experience (LLM-Style Conversation)
 
