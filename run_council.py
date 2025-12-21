@@ -25,6 +25,9 @@ def print_header():
     print("Type your message. 'exit' or 'quit' to end. Ctrl+C to interrupt.\n")
 
 def interactive_mode():
+    # Ensure model is available before starting
+    ensure_model()
+    
     print_header()
     
     # Show recent sessions if available
