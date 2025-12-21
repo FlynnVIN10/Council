@@ -14,14 +14,14 @@ See `LOCAL_SETUP.md` for macOS installation steps.
 See `LOCAL_MODELS.md` for model recommendations.
 See `EXAMPLES.md` for sample prompts and outputs.
 
-## Quick Start (CLI-Only - Default)
+## Quick Start (Local CLI - Recommended)
 
-The Council runs CLI-only by default for simplicity and direct control.
+The Council runs locally by default for simplicity, stability, and direct control. This is the recommended approach.
 
 1. Follow `LOCAL_SETUP.md` to set up Ollama and models.
 2. Copy `.env.example` to `.env` and adjust if needed.
 3. Run: `./council-restart.sh`
-4. The script starts Ollama and drops you directly into the interactive CLI prompt ("You:").
+4. The script starts Ollama locally and drops you directly into the interactive CLI prompt ("You:").
 5. Conversation flows naturally with the Curator and full council deliberation on demand.
 
 **Alternative**: Run manually:
@@ -34,9 +34,11 @@ python run_council.py "Your prompt here"  # Single-shot
 
 **Note**: First run will automatically pull the phi3 model via `ollama pull phi3` (~2.3GB), which takes a few minutes.
 
-### Docker Deployment (Optional)
+### Docker Deployment (Advanced/Optional)
 
-For portability or containerized environments, Docker is available as an explicit option:
+Docker is available for portability or containerized environments, but it's **optional and advanced**. The local CLI is simpler, more stable, and recommended for most users.
+
+If you need Docker:
 
 ```bash
 docker-compose up --build
@@ -52,7 +54,7 @@ To restart cleanly:
 docker-compose down && docker-compose up --build
 ```
 
-**Note**: Docker is optional — CLI-only is the default and recommended approach.
+**Important**: Local CLI is the default and recommended approach. Docker is for advanced use cases and may require additional configuration.
 
 ## Performance Notes
 
@@ -74,7 +76,7 @@ docker-compose down && docker-compose up --build
 
 ## Running The Council
 
-**Start (CLI-only - default):**
+**Start (Local CLI - recommended):**
 ```bash
 ./council-restart.sh
 ```
@@ -89,8 +91,8 @@ pkill -f "ollama serve"
 ```
 This stops the local Ollama server.
 
-**Docker (optional):**
-If using Docker, use `docker-compose down` to stop containers.
+**Docker (advanced/optional):**
+If using Docker, use `docker-compose down` to stop containers. Note: Local CLI is recommended for stability and simplicity.
 
 ## CLI Experience (LLM-Style Conversation)
 
