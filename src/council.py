@@ -82,6 +82,7 @@ CORE RULES:
 - Never run the full council yourself — only ask for confirmation.
 - Keep responses short and natural (under 100 words).
 - If the user says anything about "Self-Improvement Mode" or "self-improve", immediately respond: "Entering Self-Improvement Mode — full council deliberating on self-evolution..." Then stop.
+- IMPORTANT: Self-Improvement Mode is proposal-only. You may NOT execute code changes. Proposals are for human review only.
 
 Current message: {prompt}
 History: {history_summary}"""
@@ -182,57 +183,20 @@ def run_council_sync(prompt: str, previous_proposal: dict = None, skip_curator: 
     # Detect self-improvement mode
     is_self_improve_mode = "self-improvement mode" in prompt.lower() or "self-improve" in prompt.lower()
     
-    # Handle approval execution (only if previous_proposal is provided, indicating intentional approval)
+    # Handle approval execution (DISABLED FOR SAFETY - proposal-only mode)
     if previous_proposal and "approved" in prompt.lower() and "proceed" in prompt.lower():
-        try:
-            from src.self_improve import create_proposal_branch, apply_changes, commit_changes, get_current_branch
-            
-            print("\033[1;33mExecuting approved proposal...\033[0m\n")
-            branch = create_proposal_branch()
-            print(f"Created branch: {branch}\n")
-            
-            # Apply file changes
-            file_changes = previous_proposal.get("file_changes", {})
-            if not file_changes:
-                return {"error": "No file changes in proposal — nothing to execute"}
-            
-            diffs = apply_changes(file_changes)
-            
-            # Check if there are actual git changes before committing
-            status_result = subprocess.run(["git", "status", "--porcelain"], 
-                                         check=True, capture_output=True, text=True)
-            if not status_result.stdout.strip():
-                return {"error": "No actual changes detected after applying proposal. The proposal may have contained placeholder or identical code."}
-            
-            # Show diffs
-            print("\033[1;36mChanges applied:\033[0m")
-            for file_path, diff in diffs.items():
-                print(f"\n--- {file_path} ---")
-                print(diff)
-            
-            # Commit
-            commit_msg = f"Self-improvement: {previous_proposal.get('description', 'Codebase enhancement')}"
-            commit_changes(commit_msg)
-            
-            print(f"\n\033[1;32m✓ Proposal executed successfully on branch: {branch}\033[0m")
-            print(f"\nTo merge: git checkout main && git merge {branch}")
-            print(f"To review: git diff main {branch}")
-            print(f"To rollback: git checkout main && git branch -D {branch}\n")
-            
-            return {
-                "prompt": prompt,
-                "executed": True,
-                "branch": branch,
-                "message": "Proposal executed successfully"
-            }
-        except Exception as e:
-            error_msg = str(e)
-            print(f"\n\033[1;31mExecution failed: {error_msg}\033[0m")
-            print(f"\n\033[1;33mSuggestions:\033[0m")
-            print(f"1. Review the branch: git status")
-            print(f"2. Check what was changed: git diff")
-            print(f"3. If needed, rollback: git checkout main && git branch -D {get_current_branch() or 'self-improve/proposal-XXX'}")
-            return {"error": f"Execution failed: {error_msg}"}
+        print("\n\033[1;33m" + "="*60 + "\033[0m")
+        print("\033[1;31mSELF-EXECUTION DISABLED FOR SAFETY\033[0m")
+        print("\033[1;33m" + "="*60 + "\033[0m")
+        print("\nProposal generated above — review and apply manually if desired.\n")
+        print("Self-Improvement Mode is proposal-only for safety.")
+        print("No code changes have been applied.\n")
+        
+        return {
+            "prompt": prompt,
+            "executed": False,
+            "message": "Self-execution disabled — proposal-only mode"
+        }
     
     # Curator agent (fast receptionist/assistant) - only if not skipped
     curator_output = ""
@@ -509,12 +473,14 @@ Rationale: [Detailed explanation of why this improvement is high-leverage, syner
 
 IMPORTANT: Provide complete file contents, not partial code. If modifying existing files, include the full modified file content.
 
+CRITICAL: Self-Improvement Mode is PROPOSAL-ONLY. Proposals are for human review only — they will NOT be automatically executed.
+
 Researcher: {research_output}
 Critic: {critic_output}
 Planner: {planner_output}
 Prompt: {prompt}
 
-Awaiting human approval: reply 'Approved. Proceed' to execute."""
+The proposal will be presented to the user for manual review and application."""
     else:
         judge_prompt = f"""You are the Judge/Synthesizer — a radical visionary obsessed with 10x transformation.
 NON-NEGOTIABLE RULES:

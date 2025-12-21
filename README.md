@@ -170,7 +170,7 @@ LLM_MAX_TOKENS=3700    # ~12 minute full council runs on CPU-only hardware
 
 **Note**: This is the recommended configuration for daily use with complex or meta prompts.
 
-## Self-Improvement Mode
+## Self-Improvement Mode (Proposal Only)
 
 Simply include `"self-improvement mode"` or `"self-improve"` in your message to trigger. Single-line input, natural conversation flow.
 
@@ -180,27 +180,18 @@ The Council will:
 - **Curator responds**: "Entering Self-Improvement Mode — the full council will now deliberate on a self-evolution proposal (~12 minutes)."
 - **Full council deliberates**: Analyzes its own codebase, examines structure, identifies improvement opportunities
 - **Proposes one high-leverage improvement** with concrete, complete code changes
-- **Waits for approval**: Presents the proposal with file changes, impact, and rollback instructions
+- **Presents proposal**: Shows file changes, impact, and rollback instructions for human review
 
-**To approve and execute**: Type `"Approved. Proceed"` after reviewing the proposal.
-
-**Safety features**:
-- All changes are made on a safe branch: `self-improve/proposal-<timestamp>`
-- No destructive actions (no file deletion, no main branch changes)
-- Complete rollback instructions included
-- Full diffs shown before and after execution
-- Validation ensures complete, executable code (no placeholders)
+**Important**: Self-Improvement Mode is **proposal-only**. Execution is disabled for safety. The Council generates proposals for human review — you must manually apply code changes if desired.
 
 **Example flow**:
 1. Type: `"Council, enter self-improvement mode and analyze how to improve error handling"`
 2. Curator acknowledges, full council deliberates (~12 minutes)
 3. Review the proposal (files to change, impact, rollback plan)
-4. Approve: `"Approved. Proceed"`
-5. Changes are applied and committed to the proposal branch
-6. Review with `git diff main self-improve/proposal-XXX`
-7. Merge when satisfied or rollback with `git checkout main && git branch -D self-improve/proposal-XXX`
+4. If approved, manually apply the changes using git or your preferred method
+5. The proposal contains complete file contents ready for application
 
-This turns the Council into a true self-evolving system under human oversight.
+This enables safe self-evolution under human oversight without risk of automatic execution.
 
 ### Success Example: Meta-Cognitive Self-Improvement
 
