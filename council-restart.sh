@@ -24,4 +24,4 @@ sleep 8
 source venv/bin/activate
 echo "The Council is ready."
 echo ""
-exec python run_council.py
+exec python run_council.py </dev/tty
