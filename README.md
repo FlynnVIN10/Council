@@ -16,27 +16,28 @@ See `EXAMPLES.md` for sample prompts and outputs.
 
 ## Quick Start
 
-### Global Commands (Run from Anywhere)
+### Setup Global Commands (One-Time)
 
-Add these aliases to your shell profile (`~/.zshrc` or `~/.bash_profile`):
+Run these commands **once** to enable `council-up`/`council-restart`/`council-down` from anywhere:
 
 ```bash
-alias council-up='cd /Users/Flynn/Documents/GitHub/Council && docker-compose up --build'
-alias council-restart='cd /Users/Flynn/Documents/GitHub/Council && docker-compose down && docker-compose up --build'
-alias council-down='cd /Users/Flynn/Documents/GitHub/Council && docker-compose down'
+echo "alias council-up='cd /Users/Flynn/Documents/GitHub/Council && docker-compose up --build'" >> ~/.zshrc
+echo "alias council-restart='cd /Users/Flynn/Documents/GitHub/Council && docker-compose down && docker-compose up --build'" >> ~/.zshrc
+echo "alias council-down='cd /Users/Flynn/Documents/GitHub/Council && docker-compose down'" >> ~/.zshrc
+source ~/.zshrc
 ```
 
-Then reload your shell:
+**Test with:**
 ```bash
-source ~/.zshrc   # or source ~/.bash_profile
+council-up
 ```
 
-Now use from **anywhere**:
+Now you can use from **anywhere**:
 - `council-up` → start fresh
 - `council-restart` → full clean restart
 - `council-down` → stop all containers
 
-**Note**: Adjust the path if your repo moves.
+**Note**: Adjust the path if your repo is in a different location.
 
 ### Docker Deployment (Recommended for Portability)
 
