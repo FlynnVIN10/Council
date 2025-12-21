@@ -35,6 +35,7 @@ def interactive_mode():
     last_proposal = None  # Store last self-improvement proposal
     waiting_for_confirmation = False  # Track if we're waiting for yes/no
     refined_query = None  # Store refined query when Curator asks for confirmation
+    waiting_for_execution_confirmation = False  # Track if we're waiting for double confirmation to execute
 
     while True:
         try:
@@ -102,8 +103,15 @@ def interactive_mode():
                 # Clean return to prompt - user can scroll up for history
                 continue
 
-            # Handle approval for self-improvement
+            # Handle approval for self-improvement (double confirmation)
             if user_input.lower() == "approved. proceed" and last_proposal:
+                print("\n\033[1;31m⚠️  WARNING: This will modify the codebase.\033[0m")
+                print("\033[1;33mConfirm with 'YES I AM SURE' to proceed.\033[0m\n")
+                waiting_for_execution_confirmation = True
+                continue
+            
+            # Handle double confirmation for execution
+            if waiting_for_execution_confirmation and user_input.upper() == "YES I AM SURE" and last_proposal:
                 print("\n\033[1;33mExecuting approved proposal...\033[0m\n")
                 result = run_council_sync("Approved. Proceed", previous_proposal=last_proposal)
                 if "error" in result:
@@ -115,7 +123,13 @@ def interactive_mode():
                 last_proposal = None  # Clear after execution
                 curator_history = []  # Reset curator conversation
                 waiting_for_confirmation = False
+                waiting_for_execution_confirmation = False
                 # Clean return to prompt
+                continue
+            elif waiting_for_execution_confirmation:
+                # User didn't confirm, cancel execution
+                print("\033[1;36mExecution cancelled. Proposal remains available.\033[0m\n")
+                waiting_for_execution_confirmation = False
                 continue
 
             # Handle confirmation response

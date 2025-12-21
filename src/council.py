@@ -311,6 +311,13 @@ Prompt: {prompt}"""
         researcher_prompt = f"""You are the Researcher agent analyzing the Council codebase for self-improvement.
 Your task: Examine the codebase structure, identify concrete improvement opportunities, and analyze what high-leverage changes would enhance the Council's capabilities.
 
+CRITICAL SAFETY RULES:
+- You may propose ONLY one change per deliberation
+- NEVER suggest spawning containers, processes, or parallel agents
+- All changes must be single-file or minimal multi-file changes
+- Proposals must be safe and reversible
+- No system-level changes that could affect the host or Docker environment
+
 Focus on:
 - Code organization and structure
 - Performance bottlenecks
@@ -367,9 +374,16 @@ Provide detailed reasoning, examples, risks, and rewards."""
         critic_prompt = f"""You are the Critic agent reviewing the Researcher's codebase improvement proposal.
 Your task: Challenge the proposal rigorously. Is it high-leverage enough? Could it be bolder? Are there risks or edge cases?
 Push for more ambitious improvements if the proposal is too incremental.
+
+CRITICAL SAFETY RULES:
+- Proposals must be limited to ONE change per deliberation
+- NEVER allow suggestions that spawn containers, processes, or parallel agents
+- All changes must be code-only, safe, and reversible
+- Reject any proposal that could affect system stability or spawn external processes
+
 Research input: {research_output}
 Prompt: {prompt}
-Provide sharp critique and demand more impact if needed."""
+Provide sharp critique and demand more impact if needed, while ensuring safety constraints are met."""
     else:
         critic_prompt = f"""You are the Critic agent — a ruthless contrarian who rejects incremental, safe, or conventional improvements.
 If the Researcher includes anything resembling mainstream advice, aggressively dismiss it as insufficient for dramatic growth.
@@ -405,15 +419,24 @@ Output sharp, focused critique that forces greater ambition."""
     if is_self_improve_mode:
         planner_prompt = f"""You are the Planner agent structuring the codebase improvement proposal.
 Your task: Turn the improvement idea into a concrete implementation plan with specific file changes.
+
+CRITICAL SAFETY RULES:
+- Plan for ONLY ONE change per deliberation
+- NEVER plan to spawn containers, processes, or parallel agents
+- All changes must be code-only within existing files or new single files
+- Changes must be safe, reversible, and not affect system-level resources
+- No Docker, subprocess spawning, or external process creation
+
 Specify:
-- Which files need to be modified
+- Which files need to be modified (keep minimal, ideally single file)
 - What changes are needed (be specific)
-- Dependencies or prerequisites
-- Testing approach
+- Dependencies or prerequisites (code dependencies only, no external processes)
+- Testing approach (code-based testing only)
+
 Research: {research_output}
 Critic: {critic_output}
 Prompt: {prompt}
-Output a detailed implementation plan with file-level specificity."""
+Output a detailed implementation plan with file-level specificity, ensuring safety constraints."""
     else:
         planner_prompt = f"""You are the Planner agent — a pragmatic strategist for high-ambition experiments.
 Turn the bold ideas from Researcher and Critic into a portfolio of concurrent or phased personal experiments (aim for 3–5 parallel tracks, not one).
@@ -450,6 +473,15 @@ Output a clear, numbered multi-track action plan with timelines."""
         judge_prompt = f"""You are the Judge/Synthesizer creating a formal self-improvement proposal for the Council codebase.
 
 Your task: Synthesize the analysis into ONE high-leverage, concrete improvement with executable code changes.
+
+CRITICAL SAFETY RULES:
+- You may propose ONLY one change per deliberation
+- NEVER suggest spawning containers, processes, or parallel agents
+- All changes must be single-file or minimal multi-file (max 2-3 files)
+- Proposals must be safe and reversible
+- NO Docker commands, subprocess calls, or external process spawning
+- NO system-level changes or modifications to Docker configuration
+- Code changes only — no infrastructure, deployment, or process management changes
 
 CRITICAL REQUIREMENTS FOR FILE CONTENTS:
 - FULL, complete, syntactically correct new file contents must be provided — NO "not shown", "placeholder", "TODO", or "implementation omitted" allowed
