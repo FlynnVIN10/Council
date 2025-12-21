@@ -20,7 +20,7 @@ def print_header():
     os.system('cls' if os.name == 'nt' else 'clear')
     print("=" * 60)
     print("     THE COUNCIL — Bold & Deep Mode")
-    print("     (phi3:mini @ 3700 tokens — visionary portfolios)")
+    print("     (phi3 @ 3700 tokens — visionary portfolios)")
     print("=" * 60)
     print("Type your message. 'exit' or 'quit' to end. Ctrl+C to interrupt.\n")
 
