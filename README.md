@@ -27,6 +27,12 @@ echo "alias council-down='cd /Users/Flynn/Documents/GitHub/Council && docker-com
 source ~/.zshrc
 ```
 
+**Important**: If you already added the aliases but they're not working in your current terminal, run:
+```bash
+source ~/.zshrc
+```
+Or simply open a new terminal window.
+
 **Test with:**
 ```bash
 council-up
