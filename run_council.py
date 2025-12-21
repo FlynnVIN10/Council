@@ -1,6 +1,7 @@
 import os
 import sys
 from src.council import run_council_sync, run_curator_only
+from src.memory import get_recent_sessions
 
 def print_header():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -12,6 +13,19 @@ def print_header():
 
 def interactive_mode():
     print_header()
+    
+    # Show recent sessions if available
+    try:
+        recent = get_recent_sessions(3)
+        if recent:
+            print(f"\nWelcome back. {len(recent)} recent sessions remembered.")
+            for row in recent:
+                print(f"- {row[1][:19]}: {row[2][:80]}...")
+            print()
+    except Exception as e:
+        # Don't fail if memory database isn't available
+        pass
+    
     print("\033[1;36mCurator:\033[0m Hello and welcome to The Council!\n")
     print("I'm the Curator — your fast assistant to help craft great queries for the full council's bold deliberation.\n")
     print("The council takes ~12 minutes for deep reasoning, so let's refine your idea first.\n")

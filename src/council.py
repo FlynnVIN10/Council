@@ -5,6 +5,7 @@ import os
 import json
 from concurrent.futures import ThreadPoolExecutor
 from src.ollama_llm import ollama_completion
+from src.memory import save_session
 
 # Persistent conversation history
 # Support Docker volume persistence via DATA_DIR environment variable
@@ -639,6 +640,14 @@ Now synthesize a complete 4-item portfolio."""
         except Exception as e:
             # If parsing fails, still return the result but log the error
             result["proposal_parse_error"] = str(e)
+
+    # Save session to persistent memory database
+    if "error" not in result:
+        try:
+            save_session(prompt, final_answer, reasoning_summary)
+        except Exception as e:
+            # Don't fail the whole process if memory save fails
+            print(f"\nWarning: Failed to save session to memory database: {e}")
 
     return result
 
