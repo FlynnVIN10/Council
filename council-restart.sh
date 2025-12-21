@@ -18,10 +18,10 @@ echo "Neural activation... COMPLETE"
 sleep 2
 echo "Conduit Open"
 echo ""
-echo "The Council is ready."
-echo ""
 pkill -f "ollama serve" || true
 ollama serve &
 sleep 8
 source venv/bin/activate
-python run_council.py
+echo "The Council is ready."
+echo ""
+exec python run_council.py
