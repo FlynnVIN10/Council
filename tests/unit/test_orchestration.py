@@ -2,6 +2,7 @@ from src import council
 
 
 def _stub_memory(monkeypatch):
+    # Stub memory functions that are imported at module level
     monkeypatch.setattr(council, "get_latest_summary", lambda *args, **kwargs: "")
     monkeypatch.setattr(council, "get_relevant_facts", lambda *args, **kwargs: [])
     monkeypatch.setattr(council, "get_all_preferences", lambda *args, **kwargs: {})
@@ -10,9 +11,9 @@ def _stub_memory(monkeypatch):
     monkeypatch.setattr(council, "save_summary", lambda *args, **kwargs: None)
     monkeypatch.setattr(council, "save_facts", lambda *args, **kwargs: None)
     monkeypatch.setattr(council, "build_session_summary", lambda *args, **kwargs: "summary")
-    monkeypatch.setattr(council, "prune_messages", lambda *args, **kwargs: None)
-    monkeypatch.setattr(council, "vacuum_db", lambda *args, **kwargs: None)
     monkeypatch.setattr(council, "generate_memory_snapshot", lambda *args, **kwargs: ("", []))
+    # Disable persistence so prune_messages/vacuum_db won't be called
+    monkeypatch.setattr(council, "ENABLE_PERSISTENCE", False)
 
 
 def test_run_council_sync_calls_agents_in_order(monkeypatch):
