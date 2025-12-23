@@ -97,9 +97,9 @@ python run_council.py "Test prompt: What is the capital of France?"
 Run these commands **once** to enable `council-up`/`council-restart`/`council-down` from anywhere:
 
 ```bash
-echo "alias council-up='cd /Users/Flynn/Documents/GitHub/Council && docker-compose up --build'" >> ~/.zshrc
-echo "alias council-restart='cd /Users/Flynn/Documents/GitHub/Council && docker-compose down && docker-compose up --build'" >> ~/.zshrc
-echo "alias council-down='cd /Users/Flynn/Documents/GitHub/Council && docker-compose down'" >> ~/.zshrc
+echo "alias council-up='/Users/Flynn/Documents/GitHub/Council/council-up.sh'" >> ~/.zshrc
+echo "alias council-restart='/Users/Flynn/Documents/GitHub/Council/council-restart.sh'" >> ~/.zshrc
+echo "alias council-down='/Users/Flynn/Documents/GitHub/Council/council-down.sh'" >> ~/.zshrc
 source ~/.zshrc
 ```
 
@@ -111,19 +111,23 @@ council-up
 Now you can use from **anywhere**:
 - `council-up` → start fresh
 - `council-restart` → full clean restart
-- `council-down` → stop all containers
+- `council-down` → stop all local processes
 
 **Note**: Adjust the path if your repo is in a different location.
 
 ### Full Platform Control (Local Scripts)
 
-**Alternative: Use local scripts** (as fallbacks)
+**Use the local scripts directly** (no aliases required)
 
 **Start:**
 ```bash
-./council-restart.sh
+./council-up.sh
 ```
 The script starts Ollama and drops you directly into the interactive CLI prompt ("You:").
+For a full clean restart:
+```bash
+./council-restart.sh
+```
 
 Conversation flows naturally with the Curator and full council deliberation on demand.
 
@@ -131,7 +135,7 @@ Conversation flows naturally with the Curator and full council deliberation on d
 ```bash
 ./council-down.sh
 ```
-Cleanly shuts down all containers and processes.
+Cleanly shuts down all local processes.
 
 **Note**: For daily convenience, use the global aliases above.
 
@@ -163,4 +167,3 @@ ollama serve
 - **Timeouts**: Ensure `LLM_MAX_TOKENS=3700` in `.env` for complete responses (recommended setting).
 - **RAM issues**: Close other apps; use smaller model (phi3:mini).
 - **No external calls**: Project uses dummy/no keys; verify with network monitor.
-

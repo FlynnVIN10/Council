@@ -2,33 +2,92 @@ import asyncio
 import re
 import subprocess
 import os
-import json
 from concurrent.futures import ThreadPoolExecutor
 from src.ollama_llm import ollama_completion
-from src.memory import save_session
+from src.memory import (
+    save_session,
+    add_message,
+    get_recent_messages,
+    get_latest_summary,
+    get_relevant_facts,
+    get_all_preferences,
+    save_summary,
+    save_facts,
+    build_session_summary,
+    ENABLE_PERSISTENCE,
+    build_session_summary,
+    prune_messages,
+    vacuum_db
+)
 
-# Persistent conversation history
-# Support Docker volume persistence via DATA_DIR environment variable
-DATA_DIR = os.getenv("DATA_DIR", ".")
-MEMORY_FILE = os.path.join(DATA_DIR, "memory.json")
+def generate_memory_snapshot(prompt, final_answer, reasoning_summary):
+    """Generate a compact summary and durable facts using the LLM."""
+    snapshot_prompt = f"""You are summarizing a completed Council session for durable memory.
+Return a concise summary and 3-7 durable facts.
 
-def load_memory():
-    """Load conversation history from memory.json"""
-    if os.path.exists(MEMORY_FILE):
-        try:
-            with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            return []
-    return []
+Format exactly:
+SUMMARY:
+[1-4 sentences]
+FACTS:
+- fact one
+- fact two
+- fact three
 
-def save_memory(history):
-    """Save conversation history to memory.json"""
+Session prompt: {prompt}
+Final answer: {final_answer}
+Reasoning summary: {reasoning_summary}
+"""
     try:
-        with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
-            json.dump(history, f, indent=2, ensure_ascii=False)
-    except Exception as e:
-        print(f"Warning: Failed to save memory: {e}")
+        text = ollama_completion(
+            [{"role": "user", "content": snapshot_prompt}],
+            max_tokens=350,
+            temperature=0.2
+        )
+    except Exception:
+        return "", []
+
+    if _is_unreliable_text(text):
+        return "", []
+
+    summary = ""
+    facts = []
+    in_summary = False
+    in_facts = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("SUMMARY:"):
+            in_summary = True
+            in_facts = False
+            continue
+        if stripped.startswith("FACTS:"):
+            in_summary = False
+            in_facts = True
+            continue
+        if in_summary and stripped:
+            if summary:
+                summary += " " + stripped
+            else:
+                summary = stripped
+        if in_facts and stripped.startswith("-"):
+            facts.append(stripped.lstrip("-").strip())
+    if _is_unreliable_text(summary):
+        summary = ""
+    facts = [fact for fact in facts if not _is_unreliable_text(fact)]
+    return summary, facts
+
+def _is_unreliable_text(text):
+    if not text:
+        return False
+    lowered = text.lower()
+    blocked = [
+        "i do not have direct access",
+        "i do not have access",
+        "as an ai developed",
+        "hypothetical scenario",
+        "cannot access external",
+        "i'm unable to access"
+    ]
+    return any(phrase in lowered for phrase in blocked)
 
 def run_curator_only(prompt: str, conversation_history: list = None, stream: bool = False) -> dict:
     """
@@ -37,9 +96,13 @@ def run_curator_only(prompt: str, conversation_history: list = None, stream: boo
     """
     # Load persistent memory if no history provided
     if conversation_history is None:
-        conversation_history = load_memory()
+        conversation_history = get_recent_messages(6)
     
     is_first_message = not conversation_history or len(conversation_history) == 0
+    preferences = get_all_preferences()
+    preferences_block = "\n".join(
+        f"- {key}: {value}" for key, value in preferences.items()
+    ) if preferences else "(No preferences set.)"
     
     # Build context from conversation history (only actual history, not fabricated)
     history_summary = ""
@@ -82,7 +145,10 @@ CORE RULES:
 - Never run the full council yourself — only ask for confirmation.
 - Keep responses short and natural (under 100 words).
 - If the user says anything about "Self-Improvement Mode" or "self-improve", immediately respond: "Entering Self-Improvement Mode — full council deliberating on self-evolution..." Then stop.
-- IMPORTANT: Self-Improvement Mode is proposal-only. You may NOT execute code changes. Proposals are for human review only.
+- IMPORTANT: Self-Improvement Mode produces proposals only. Execution requires explicit CLI approval.
+
+Preferences:
+{preferences_block}
 
 Current message: {prompt}
 History: {history_summary}"""
@@ -154,10 +220,9 @@ History: {history_summary}"""
         )
         
         # Save to persistent memory
-        conversation_history.append({"role": "user", "content": prompt})
-        conversation_history.append({"role": "assistant", "content": curator_output})
-        save_memory(conversation_history)
-        
+        add_message("user", prompt)
+        add_message("assistant", curator_output)
+
         return {
             "output": curator_output,
             "asking_confirmation": asking_confirmation,
@@ -183,19 +248,19 @@ def run_council_sync(prompt: str, previous_proposal: dict = None, skip_curator: 
     # Detect self-improvement mode
     is_self_improve_mode = "self-improvement mode" in prompt.lower() or "self-improve" in prompt.lower()
     
-    # Handle approval execution (DISABLED FOR SAFETY - proposal-only mode)
+    # Handle approval execution (CLI applies proposals; engine does not execute)
     if previous_proposal and "approved" in prompt.lower() and "proceed" in prompt.lower():
         print("\n\033[1;33m" + "="*60 + "\033[0m")
         print("\033[1;31mSELF-EXECUTION DISABLED FOR SAFETY\033[0m")
         print("\033[1;33m" + "="*60 + "\033[0m")
         print("\nProposal generated above — review and apply manually if desired.\n")
-        print("Self-Improvement Mode is proposal-only for safety.")
-        print("No code changes have been applied.\n")
+        print("Self-Improvement proposals are applied by the CLI, not the engine.")
+        print("No code changes have been applied here.\n")
         
         return {
             "prompt": prompt,
             "executed": False,
-            "message": "Self-execution disabled — proposal-only mode"
+            "message": "Execution handled by CLI — no changes applied here"
         }
     
     # Curator agent (fast receptionist/assistant) - only if not skipped
@@ -212,6 +277,7 @@ CORE RULES:
 - ONLY use information from the current message.
 - Be casual, warm, and concise — like a helpful friend.
 - Hand off to the full council for deep deliberation.
+- Do NOT claim you lack access to the system or codebase; respond only to the given prompt.
 Keep your response short and natural (under 100 words).
 Prompt: {prompt}"""
         
@@ -265,6 +331,15 @@ Prompt: {prompt}"""
             print("Starting council – loading model (first run only, please wait)...")
         curator_output = f"Curator: Understood. Deliberation beginning with refined query: {prompt}"
     
+    memory_context = get_latest_summary()
+    relevant_facts = get_relevant_facts(prompt, limit=5)
+    preferences = get_all_preferences()
+    preferences_block = "\n".join(
+        f"- {key}: {value}" for key, value in preferences.items()
+    ) if preferences else "(No preferences set.)"
+    facts_block = "\n".join(f"- {fact}" for fact in relevant_facts) if relevant_facts else "(No relevant facts.)"
+    memory_block = memory_context if memory_context else "(No prior memory.)"
+
     # Researcher agent
     if stream:
         print("\033[1;35mResearcher (bold exploration):\033[0m ", end="", flush=True)
@@ -277,10 +352,10 @@ Your task: Examine the codebase structure, identify concrete improvement opportu
 
 CRITICAL SAFETY RULES:
 - You may propose ONLY one change per deliberation
-- NEVER suggest spawning containers, processes, or parallel agents
+- NEVER suggest spawning external processes or parallel agents
 - All changes must be single-file or minimal multi-file changes
 - Proposals must be safe and reversible
-- No system-level changes that could affect the host or Docker environment
+- No system-level changes that could affect the host environment
 
 Focus on:
 - Code organization and structure
@@ -291,6 +366,13 @@ Focus on:
 - Advanced features that could be added
 
 Review the codebase context and propose ONE specific, concrete improvement with high impact.
+Memory Summary:
+{memory_block}
+Facts:
+{facts_block}
+Preferences:
+{preferences_block}
+
 Prompt: {prompt}
 Provide detailed analysis of the improvement opportunity."""
     else:
@@ -309,6 +391,13 @@ Target caliber:
 - Evolutionary code improvement
 - Extreme language experiments (Idris, Rust, ATS, F*)
 Be speculative but grounded. Include specific tools, papers, or projects where possible.
+Memory Summary:
+{memory_block}
+Facts:
+{facts_block}
+Preferences:
+{preferences_block}
+
 Prompt: {prompt}
 Provide detailed reasoning, examples, risks, and rewards."""
     
@@ -341,11 +430,18 @@ Push for more ambitious improvements if the proposal is too incremental.
 
 CRITICAL SAFETY RULES:
 - Proposals must be limited to ONE change per deliberation
-- NEVER allow suggestions that spawn containers, processes, or parallel agents
+- NEVER allow suggestions that spawn external processes or parallel agents
 - All changes must be code-only, safe, and reversible
 - Reject any proposal that could affect system stability or spawn external processes
 
 Research input: {research_output}
+Memory Summary:
+{memory_block}
+Facts:
+{facts_block}
+Preferences:
+{preferences_block}
+
 Prompt: {prompt}
 Provide sharp critique and demand more impact if needed, while ensuring safety constraints are met."""
     else:
@@ -355,6 +451,13 @@ Demand radically higher-leverage alternatives, even if they are harder, less pro
 Never accept narrowing to a single idea — insist on a portfolio of bold experiments.
 Highlight limitations of safe choices and elevate the most ambitious options.
 Research input: {research_output}
+Memory Summary:
+{memory_block}
+Facts:
+{facts_block}
+Preferences:
+{preferences_block}
+
 Prompt: {prompt}
 Output sharp, focused critique that forces greater ambition."""
     
@@ -386,10 +489,10 @@ Your task: Turn the improvement idea into a concrete implementation plan with sp
 
 CRITICAL SAFETY RULES:
 - Plan for ONLY ONE change per deliberation
-- NEVER plan to spawn containers, processes, or parallel agents
+- NEVER plan to spawn external processes or parallel agents
 - All changes must be code-only within existing files or new single files
 - Changes must be safe, reversible, and not affect system-level resources
-- No Docker, subprocess spawning, or external process creation
+- No subprocess spawning or external process creation
 
 Specify:
 - Which files need to be modified (keep minimal, ideally single file)
@@ -399,6 +502,13 @@ Specify:
 
 Research: {research_output}
 Critic: {critic_output}
+Memory Summary:
+{memory_block}
+Facts:
+{facts_block}
+Preferences:
+{preferences_block}
+
 Prompt: {prompt}
 Output a detailed implementation plan with file-level specificity, ensuring safety constraints."""
     else:
@@ -408,6 +518,13 @@ Make each track concrete: tools, learning resources, small pilot projects, succe
 Emphasize parallel exploration to maximize learning velocity.
 Research: {research_output}
 Critic: {critic_output}
+Memory Summary:
+{memory_block}
+Facts:
+{facts_block}
+Preferences:
+{preferences_block}
+
 Prompt: {prompt}
 Output a clear, numbered multi-track action plan with timelines."""
     
@@ -440,11 +557,11 @@ Your task: Synthesize the analysis into ONE high-leverage, concrete improvement 
 
 CRITICAL SAFETY RULES:
 - You may propose ONLY one change per deliberation
-- NEVER suggest spawning containers, processes, or parallel agents
+- NEVER suggest spawning external processes or parallel agents
 - All changes must be single-file or minimal multi-file (max 2-3 files)
 - Proposals must be safe and reversible
-- NO Docker commands, subprocess calls, or external process spawning
-- NO system-level changes or modifications to Docker configuration
+- NO subprocess calls or external process spawning
+- NO system-level changes or modifications to host configuration
 - Code changes only — no infrastructure, deployment, or process management changes
 
 CRITICAL REQUIREMENTS FOR FILE CONTENTS:
@@ -473,11 +590,14 @@ Rationale: [Detailed explanation of why this improvement is high-leverage, syner
 
 IMPORTANT: Provide complete file contents, not partial code. If modifying existing files, include the full modified file content.
 
-CRITICAL: Self-Improvement Mode is PROPOSAL-ONLY. Proposals are for human review only — they will NOT be automatically executed.
+CRITICAL: Self-Improvement Mode produces proposals only. Execution requires explicit CLI approval.
 
 Researcher: {research_output}
 Critic: {critic_output}
 Planner: {planner_output}
+Memory Context:
+{memory_block}
+
 Prompt: {prompt}
 
 The proposal will be presented to the user for manual review and application."""
@@ -507,6 +627,9 @@ If you cannot produce 4, use these fallback techniques to complete the list:
 Researcher: {research_output}
 Critic: {critic_output}
 Planner: {planner_output}
+Memory Context:
+{memory_block}
+
 Prompt: {prompt}
 
 Now synthesize a complete 4-item portfolio."""
@@ -639,10 +762,24 @@ Now synthesize a complete 4-item portfolio."""
             # If parsing fails, still return the result but log the error
             result["proposal_parse_error"] = str(e)
 
-    # Save session to persistent memory database
+    # Save session to persistent memory database (only if persistence enabled)
     if "error" not in result:
         try:
-            save_session(prompt, final_answer, reasoning_summary)
+            from src.memory import ENABLE_PERSISTENCE
+            if ENABLE_PERSISTENCE:
+                session_id = save_session(prompt, final_answer, reasoning_summary)
+                add_message("user", prompt, session_id=session_id)
+                add_message("assistant", final_answer, session_id=session_id)
+                summary, facts = generate_memory_snapshot(prompt, final_answer, reasoning_summary)
+                if not summary:
+                    summary = build_session_summary(prompt, final_answer, reasoning_summary)
+                save_summary(session_id, summary)
+                if facts:
+                    save_facts(session_id, facts)
+            retain_days = int(os.getenv("MEMORY_RETENTION_DAYS", "90"))
+            prune_messages(retain_days=retain_days)
+            if os.getenv("MEMORY_VACUUM", "0").lower() in {"1", "true", "yes"}:
+                vacuum_db()
         except Exception as e:
             # Don't fail the whole process if memory save fails
             print(f"\nWarning: Failed to save session to memory database: {e}")

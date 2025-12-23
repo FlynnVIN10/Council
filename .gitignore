@@ -8,6 +8,9 @@ venv/
 env/
 ENV/
 .venv
+.pytest_cache/
+.benchmarks/
+.cursor/
 
 # Environment variables
 .env
@@ -28,3 +31,13 @@ Thumbs.db
 
 memory.json
 ollama.log
+council_memory.db
+data/healing_log.json
+council_memory.db
+*.db
+
+# Cursor IDE
+.cursor/
+
+# GitHub workflows (keep if needed, but exclude if not)
+# .github/

@@ -20,7 +20,7 @@ The Council runs locally by default for simplicity, stability, and direct contro
 
 1. Follow `LOCAL_SETUP.md` to set up Ollama and models.
 2. Copy `.env.example` to `.env` and adjust if needed.
-3. Run: `./council-restart.sh`
+3. Run: `./council-up.sh`
 4. The script starts Ollama locally and drops you directly into the interactive CLI prompt ("You:").
 5. Conversation flows naturally with the Curator and full council deliberation on demand.
 
@@ -34,28 +34,6 @@ python run_council.py "Your prompt here"  # Single-shot
 
 **Note**: First run will automatically pull the phi3 model via `ollama pull phi3` (~2.3GB), which takes a few minutes.
 
-### Docker Deployment (Advanced/Optional)
-
-Docker is available for portability or containerized environments, but it's **optional and advanced**. The local CLI is simpler, more stable, and recommended for most users.
-
-If you need Docker:
-
-```bash
-docker-compose up --build
-```
-
-- Starts Ollama and The Council CLI in containers
-- Drops directly into interactive "You:" prompt
-- All memory and data persisted in volumes
-- Web UI available at http://localhost:8000 if desired
-
-To restart cleanly:
-```bash
-docker-compose down && docker-compose up --build
-```
-
-**Important**: Local CLI is the default and recommended approach. Docker is for advanced use cases and may require additional configuration.
-
 ## Performance Notes
 
 - **Note**: Uses direct LiteLLM calls to Ollama for reliable performance on CPU (bypasses CrewAI integration issues).
@@ -63,6 +41,28 @@ docker-compose down && docker-compose up --build
 - On your 2018 Mac with recommended settings (LLM_MAX_TOKENS=3700), expect ~12 minutes for a full council run.
 - Monitor RAM: Keep under 12GB usage to avoid swapping.
 - **Recommended model**: phi3 (capable on CPU).
+
+## Testing
+
+Smoke tests (mocked by default, fast):
+```bash
+python scripts/smoke_test.py
+```
+
+Write a latency baseline snapshot:
+```bash
+python scripts/smoke_test.py --write-baseline
+```
+
+Run smoke tests against a live Ollama server:
+```bash
+python scripts/smoke_test.py --use-ollama
+```
+
+Unit tests:
+```bash
+pytest
+```
 
 ## Performance Expectations on 2018 MacBook Pro (CPU-only)
 
@@ -78,7 +78,7 @@ docker-compose down && docker-compose up --build
 
 **Start (Local CLI - recommended):**
 ```bash
-./council-restart.sh
+./council-up.sh
 ```
 The script starts Ollama locally and drops you directly into the interactive CLI prompt ("You:").
 
@@ -90,9 +90,10 @@ Press `Ctrl+C` to exit the CLI, then:
 pkill -f "ollama serve"
 ```
 This stops the local Ollama server.
-
-**Docker (advanced/optional):**
-If using Docker, use `docker-compose down` to stop containers. Note: Local CLI is recommended for stability and simplicity.
+To stop everything in one command:
+```bash
+./council-down.sh
+```
 
 ## CLI Experience (LLM-Style Conversation)
 
@@ -105,6 +106,29 @@ Run: `python run_council.py`
 - **Type 'exit'** to end session
 
 The interactive mode provides a conversational experience where you can build on previous responses. Single-shot mode is still available by passing a prompt as an argument.
+
+## Persistent Memory
+
+The Council stores long-term memory in SQLite (`council_memory.db`). Persistence is disabled by default for v0.1.
+- **Sessions**: prompt, final answer, and reasoning
+- **Messages**: recent conversation turns
+- **Summaries**: compact memory snapshots used as context for future runs
+- **Facts**: durable, extracted statements used for targeted retrieval
+- **Preferences**: persistent behavior preferences injected into prompts
+
+Optional memory settings (via `.env`):
+- `COUNCIL_ENABLE_PERSISTENCE=false` — set to `true` to enable SQLite persistence
+- `MEMORY_RETENTION_DAYS=90` — prune old message rows
+- `MEMORY_VACUUM=0` — set to `1` to vacuum the DB after pruning
+- `MEMORY_USE_EMBEDDINGS=0` — set to `1` to enable embedding-based fact retrieval
+- `OLLAMA_EMBED_MODEL=nomic-embed-text` — embedding model for Ollama
+
+Quick memory check:
+```bash
+python3 scripts/memory_check.py
+```
+
+This memory is used to ground future Curator and Council prompts without relying on external services.
 
 ## Council Mode: Bold & Experimental
 
@@ -139,7 +163,7 @@ LLM_MAX_TOKENS=3700    # ~12 minute full council runs on CPU-only hardware
 
 **Note**: This is the recommended configuration for daily use with complex or meta prompts.
 
-## Self-Improvement Mode (Proposal Only)
+## Self-Improvement Mode (Proposal + Safe Apply)
 
 Simply include `"self-improvement mode"` or `"self-improve"` in your message to trigger. Single-line input, natural conversation flow.
 
@@ -151,16 +175,16 @@ The Council will:
 - **Proposes one high-leverage improvement** with concrete, complete code changes
 - **Presents proposal**: Shows file changes, impact, and rollback instructions for human review
 
-**Important**: Self-Improvement Mode is **proposal-only**. Execution is disabled for safety. The Council generates proposals for human review — you must manually apply code changes if desired.
+**Optional apply**: If you approve, type `approved. proceed` and the CLI will apply the proposal to a new git branch, then ask whether to commit. This keeps changes isolated and reversible.
 
 **Example flow**:
 1. Type: `"Council, enter self-improvement mode and analyze how to improve error handling"`
 2. Curator acknowledges, full council deliberates (~12 minutes)
 3. Review the proposal (files to change, impact, rollback plan)
-4. If approved, manually apply the changes using git or your preferred method
-5. The proposal contains complete file contents ready for application
+4. If approved, type `approved. proceed` to apply to a new branch
+5. Confirm whether to commit, then review the diff and merge manually if desired
 
-This enables safe self-evolution under human oversight without risk of automatic execution.
+This enables safe self-evolution under human oversight with reversible changes.
 
 ### Success Example: Meta-Cognitive Self-Improvement
 
@@ -175,4 +199,3 @@ The council demonstrated true meta-cognition by analyzing and proposing radical 
 4. **Dependent Types & Linear Logic Integration (Idris/Agda)** – Gradually migrate critical paths to languages with dependent types to encode and enforce domain-specific constraints at compile-time, preventing entire classes of runtime errors.
 
 This output showcases the council's ability to think recursively, applying advanced software engineering techniques to improve itself—a rare capability for a fully private, CPU-only system running a small model.
-

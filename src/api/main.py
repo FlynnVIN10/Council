@@ -3,34 +3,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse, HTMLResponse
 from pydantic import BaseModel
 from src.council import run_council_sync, run_curator_only
+from src.memory import get_recent_messages, get_latest_summary, get_recent_facts, get_all_preferences
 import os
-import json
 import asyncio
 
 app = FastAPI()
-
-# Persistent conversation history
-# Support Docker volume persistence via DATA_DIR environment variable
-DATA_DIR = os.getenv("DATA_DIR", ".")
-MEMORY_FILE = os.path.join(DATA_DIR, "memory.json")
-
-def load_memory():
-    """Load conversation history from memory.json"""
-    if os.path.exists(MEMORY_FILE):
-        try:
-            with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            return []
-    return []
-
-def save_memory(history):
-    """Save conversation history to memory.json"""
-    try:
-        with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
-            json.dump(history, f, indent=2, ensure_ascii=False)
-    except Exception as e:
-        print(f"Warning: Failed to save memory: {e}")
 
 # Serve UI static files - path relative to project root
 ui_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "ui")
@@ -56,7 +33,7 @@ async def council_stream(prompt: str):
     
     try:
         # Load persistent memory
-        history = load_memory()
+        history = get_recent_messages(12)
         
         # Check if self-improvement mode (bypass curator refinement)
         is_self_improve = "self-improvement mode" in prompt.lower() or "self-improve" in prompt.lower()
@@ -135,7 +112,12 @@ async def council_stream(prompt: str):
 @app.get("/memory")
 async def get_memory():
     """Get conversation history"""
-    return load_memory()
+    return {
+        "summary": get_latest_summary(),
+        "messages": get_recent_messages(50),
+        "facts": get_recent_facts(50),
+        "preferences": get_all_preferences()
+    }
 
 @app.get("/chat")
 async def chat_endpoint(message: str = Query(...)):
@@ -159,4 +141,3 @@ async def council_endpoint(request: PromptRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-

@@ -180,7 +180,6 @@ Curator → Researcher → Critic → Planner → Judge
 - [ ] Multi-turn deliberations
 - [ ] Configurable agent personalities
 - [ ] Performance dashboard
-- [ ] Docker containerization
 - [ ] Larger models on better hardware
 
 ---

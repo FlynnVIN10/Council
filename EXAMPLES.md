@@ -62,3 +62,17 @@ Expect suggestions involving formal methods, advanced types, AI agents, property
 - **Final Answer**: "4."
 - **Reasoning Summary**: "Simple math; quick consensus."
 
+## Example 6: Multi-Turn (Curator Gate)
+
+**User**: "Help me design a test suite for a 5-agent system."
+
+- **Curator**: "Happy to help. What's your target stack and constraints (runtime, CI, models)?"
+
+**User**: "Python, pytest, CPU-only, keep it light."
+
+- **Curator**: "I have a refined query ready: 'Design a light pytest suite for a 5-agent Python system (CPU-only) covering unit, smoke, and orchestration tests.' Ready for full council deliberation (~12 minutes)? (yes/no)"
+
+**User**: "yes"
+
+- **Final Answer**: "Four-part plan: unit tests for agent orchestration, smoke tests for end-to-end flow, error-path tests, and memory/persistence guardrails."
+- **Reasoning Summary**: "Curator refined scope; Researcher proposed breadth; Critic constrained scope; Planner sequenced; Judge synthesized."
