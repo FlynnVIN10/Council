@@ -14,10 +14,7 @@ from src.memory import (
     save_summary,
     save_facts,
     build_session_summary,
-    ENABLE_PERSISTENCE,
-    build_session_summary,
-    prune_messages,
-    vacuum_db
+    ENABLE_PERSISTENCE
 )
 
 def generate_memory_snapshot(prompt, final_answer, reasoning_summary):
@@ -763,11 +760,11 @@ Now synthesize a complete 4-item portfolio."""
             result["proposal_parse_error"] = str(e)
 
     # Save session to persistent memory database (only if persistence enabled)
-    if "error" not in result:
+    if "error" not in result and ENABLE_PERSISTENCE:
         try:
-            from src.memory import ENABLE_PERSISTENCE
-            if ENABLE_PERSISTENCE:
-                session_id = save_session(prompt, final_answer, reasoning_summary)
+            from src.memory import prune_messages, vacuum_db
+            session_id = save_session(prompt, final_answer, reasoning_summary)
+            if session_id:
                 add_message("user", prompt, session_id=session_id)
                 add_message("assistant", final_answer, session_id=session_id)
                 summary, facts = generate_memory_snapshot(prompt, final_answer, reasoning_summary)
@@ -776,10 +773,11 @@ Now synthesize a complete 4-item portfolio."""
                 save_summary(session_id, summary)
                 if facts:
                     save_facts(session_id, facts)
-            retain_days = int(os.getenv("MEMORY_RETENTION_DAYS", "90"))
-            prune_messages(retain_days=retain_days)
-            if os.getenv("MEMORY_VACUUM", "0").lower() in {"1", "true", "yes"}:
-                vacuum_db()
+                # Memory maintenance (only if persistence enabled)
+                retain_days = int(os.getenv("MEMORY_RETENTION_DAYS", "90"))
+                prune_messages(retain_days=retain_days)
+                if os.getenv("MEMORY_VACUUM", "0").lower() in {"1", "true", "yes"}:
+                    vacuum_db()
         except Exception as e:
             # Don't fail the whole process if memory save fails
             print(f"\nWarning: Failed to save session to memory database: {e}")
