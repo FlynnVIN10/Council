@@ -4,4 +4,5 @@ uvicorn[standard]
 pydantic
 python-dotenv
 litellm==1.48.0  # Stable version with good Ollama support
-
+pytest
+pytest-cov
