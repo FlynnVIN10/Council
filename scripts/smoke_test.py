@@ -44,8 +44,6 @@ def _patch_memory_calls():
         save_summary=mock.Mock(),
         save_facts=mock.Mock(),
         build_session_summary=mock.Mock(return_value="summary"),
-        prune_messages=mock.Mock(),
-        vacuum_db=mock.Mock(),
         generate_memory_snapshot=mock.Mock(return_value=("", [])),
     )
 
