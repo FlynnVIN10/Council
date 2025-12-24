@@ -6,6 +6,13 @@ from src.council import run_council_sync, run_curator_only
 from src.memory import get_recent_sessions
 from src.self_improve import apply_proposal, commit_changes, cleanup_merged_proposal_branches
 from src.self_healing import ErrorCapture, HealingOrchestrator, HealingProposal
+from src.healing_log import (
+    append_log_entry,
+    build_log_entry,
+    one_sentence,
+    summarize_diff,
+    summarize_stack,
+)
 
 def ensure_ollama_ready(retries=3, delay_seconds=3):
     """Ensure Ollama is reachable; attempt to start it if needed."""
@@ -66,23 +73,93 @@ def print_header():
     print("=" * 60)
     print("Type your message. 'exit' or 'quit' to end. Ctrl+C to interrupt.\n")
 
-def _display_healing_proposal(proposal: HealingProposal) -> None:
+def _shorten_text(text: str, limit: int = 240) -> str:
+    trimmed = text.strip()
+    if len(trimmed) <= limit:
+        return trimmed
+    return trimmed[: limit - 3].rstrip() + "..."
+
+
+def _display_healing_proposal(proposal: HealingProposal, proposal_id: int) -> None:
     print("\n" + "=" * 60)
     print("\033[1;33mSELF-HEALING PROPOSAL\033[0m")
     print("=" * 60)
+    print(f"\n\033[1;36mProposal ID:\033[0m {proposal_id}")
+    print("\n\033[1;33mType 'fix {proposal_id}' to review and approve.\033[0m".format(
+        proposal_id=proposal_id
+    ))
+
+
+def _display_healing_review(
+    proposal: HealingProposal,
+    error_context: dict,
+    diff_summary: dict,
+    proposal_id: int,
+) -> None:
+    print("\n" + "=" * 60)
+    print("\033[1;33mSELF-HEALING REVIEW\033[0m")
+    print("=" * 60)
+    print(f"\n\033[1;36mProposal ID:\033[0m {proposal_id}")
+    print("\n\033[1;36mError:\033[0m")
+    print(error_context.get("error_message", "(Unknown error)"))
+    stack_summary = error_context.get("stack_summary")
+    if stack_summary:
+        print("\n\033[1;36mStack Summary:\033[0m")
+        for frame in stack_summary:
+            print(f"- {frame}")
     print("\n\033[1;36mRoot Cause:\033[0m")
     print(proposal.root_cause or "(No root cause provided)")
-    print("\n\033[1;36mProposed Diff:\033[0m")
-    print(proposal.unified_diff or "(No diff provided)")
+    print("\n\033[1;36mDiff Summary:\033[0m")
+    if diff_summary.get("per_file"):
+        for path, stats in diff_summary["per_file"].items():
+            print(f"- {path}: +{stats.get('added', 0)} / -{stats.get('removed', 0)}")
+        print(f"Total LOC changed: {diff_summary.get('loc_changed', 0)}")
+    else:
+        print("(No diff provided)")
     print("\n\033[1;36mRecommended Tests:\033[0m")
     for test_cmd in proposal.tests:
         print(f"- {test_cmd}")
     print("\n\033[1;36mRisks:\033[0m")
     print(proposal.risks or "(No risks provided)")
-    print("\n\033[1;36mAgent Reasoning:\033[0m")
-    for agent_name, output in proposal.agent_reasoning.items():
-        print(f"\n[{agent_name}]\n{output}")
-    print("\n\033[1;33mType 'apply fix' to approve and apply this proposal.\033[0m")
+    if proposal.self_critique:
+        print("\n\033[1;36mSelf-Critique:\033[0m")
+        print(_shorten_text(proposal.self_critique))
+    print("\n\033[1;33mApply this patch to a new branch and run tests? (yes/no)\033[0m")
+
+
+def _register_healing_record(
+    healing_result: dict,
+    orchestrator: HealingOrchestrator,
+    healing_records: dict,
+    proposal_id: int,
+) -> None:
+    proposal = healing_result["proposal"]
+    error_context = healing_result["error_context"]
+    stack_summary = healing_result.get("stack_summary", [])
+    diff_summary = summarize_diff(proposal.unified_diff)
+    proposal_summary = one_sentence(
+        proposal.root_cause,
+        fallback=one_sentence(error_context.get("error_message", ""), fallback="Proposal generated."),
+    )
+
+    healing_records[proposal_id] = {
+        "proposal": proposal,
+        "error_context": error_context,
+        "stack_summary": stack_summary,
+        "diff_summary": diff_summary,
+        "proposal_summary": proposal_summary,
+    }
+
+    log_entry = build_log_entry(
+        error_context=error_context,
+        proposal_id=str(proposal_id),
+        proposal_summary=proposal_summary,
+        files_changed=diff_summary["files"],
+        loc_changed_estimate=diff_summary["loc_changed"],
+        approval_status="pending",
+    )
+    append_log_entry(orchestrator.log_path, log_entry)
+    _display_healing_proposal(proposal, proposal_id)
 
 def _handle_self_healing(
     error_capture: ErrorCapture,
@@ -91,7 +168,7 @@ def _handle_self_healing(
     agent_state: dict,
     error_message: str,
     exc: Exception | None = None,
-) -> HealingProposal | None:
+) -> dict | None:
     try:
         if exc is None:
             error_context = error_capture.capture_error_result(
@@ -102,8 +179,11 @@ def _handle_self_healing(
                 exc, prompt=prompt, agent_state=agent_state
             )
         proposal = orchestrator.generate_proposal(error_context)
-        _display_healing_proposal(proposal)
-        return proposal
+        return {
+            "error_context": error_context,
+            "proposal": proposal,
+            "stack_summary": summarize_stack(error_context),
+        }
     except Exception as healing_error:
         print(f"\n\033[1;31mSelf-healing failed: {healing_error}\033[0m\n")
         return None
@@ -133,7 +213,10 @@ def interactive_mode():
 
     curator_history = []  # Conversation history with Curator only
     last_proposal = None  # Store last self-improvement proposal
-    last_healing_proposal = None  # Store last self-healing proposal
+    last_healing_proposal = None  # Deprecated: kept for backward compatibility
+    healing_records = {}
+    next_healing_id = 1
+    pending_healing_id = None
     pending_apply = None  # Track applied-but-uncommitted proposal
     waiting_for_confirmation = False  # Track if we're waiting for yes/no
     refined_query = None  # Store refined query when Curator asks for confirmation
@@ -154,27 +237,126 @@ def interactive_mode():
                 print("\n\033[1;32mCouncil session ended. Goodbye!\033[0m")
                 break
 
-            if user_input.lower() == "apply fix" and last_healing_proposal:
-                commit_message = f"Self-heal: {last_healing_proposal.root_cause[:72]}".strip()
-                result = orchestrator.apply_fix(
-                    last_healing_proposal,
-                    commit_message=commit_message,
-                    run_tests=True,
-                    auto_commit=True,
+            fix_parts = user_input.lower().split()
+            if len(fix_parts) == 2 and fix_parts[0] == "fix" and fix_parts[1].isdigit():
+                proposal_id = int(fix_parts[1])
+                record = healing_records.get(proposal_id)
+                if not record:
+                    print(f"\n\033[1;31mNo self-healing proposal found for ID {proposal_id}.\033[0m\n")
+                    continue
+                record["error_context"]["stack_summary"] = record["stack_summary"]
+                _display_healing_review(
+                    record["proposal"],
+                    record["error_context"],
+                    record["diff_summary"],
+                    proposal_id,
                 )
-                if result.get("applied"):
-                    print("\n\033[1;32mSelf-healing changes applied.\033[0m")
-                    test_results = result.get("tests", [])
-                    if test_results:
-                        print("Test results:")
-                        for test in test_results:
-                            status = "ok" if test.get("returncode", 1) == 0 else "fail"
-                            print(f"- {test.get('command')}: {status}")
-                    if result.get("committed"):
-                        print("Commit created for self-healing changes.")
-                else:
-                    print(f"\n\033[1;31mSelf-healing apply failed: {result.get('reason')} \033[0m")
-                last_healing_proposal = None
+                pending_healing_id = proposal_id
+                continue
+
+            if pending_healing_id is not None:
+                record = healing_records.get(pending_healing_id)
+                if not record:
+                    pending_healing_id = None
+                    continue
+                if user_input.lower() in {"yes", "y"}:
+                    log_entry = build_log_entry(
+                        error_context=record["error_context"],
+                        proposal_id=str(pending_healing_id),
+                        proposal_summary=record["proposal_summary"],
+                        files_changed=record["diff_summary"]["files"],
+                        loc_changed_estimate=record["diff_summary"]["loc_changed"],
+                        approval_status="approved",
+                    )
+                    append_log_entry(orchestrator.log_path, log_entry)
+
+                    branch_name = f"self-healing/{pending_healing_id}"
+                    try:
+                        branch_name = orchestrator.create_branch(branch_name)
+                    except Exception as exc:
+                        print(f"\n\033[1;31mFailed to create branch: {exc}\033[0m\n")
+                        fail_entry = build_log_entry(
+                            error_context=record["error_context"],
+                            proposal_id=str(pending_healing_id),
+                            proposal_summary=record["proposal_summary"],
+                            files_changed=record["diff_summary"]["files"],
+                            loc_changed_estimate=record["diff_summary"]["loc_changed"],
+                            approval_status="failed_apply",
+                        )
+                        append_log_entry(orchestrator.log_path, fail_entry)
+                        pending_healing_id = None
+                        continue
+
+                    commit_message = f"Self-heal: {record['proposal'].root_cause[:72]}".strip()
+                    try:
+                        result = orchestrator.apply_fix(
+                            record["proposal"],
+                            commit_message=commit_message,
+                            run_tests=True,
+                            auto_commit=True,
+                        )
+                    except Exception as exc:
+                        print(f"\n\033[1;31mSelf-healing apply failed: {exc}\033[0m\n")
+                        fail_entry = build_log_entry(
+                            error_context=record["error_context"],
+                            proposal_id=str(pending_healing_id),
+                            proposal_summary=record["proposal_summary"],
+                            files_changed=record["diff_summary"]["files"],
+                            loc_changed_estimate=record["diff_summary"]["loc_changed"],
+                            approval_status="failed_apply",
+                        )
+                        append_log_entry(orchestrator.log_path, fail_entry)
+                        pending_healing_id = None
+                        continue
+
+                    if result.get("applied"):
+                        print("\n\033[1;32mSelf-healing changes applied.\033[0m")
+                        print(f"Branch: {branch_name}")
+                        test_results = result.get("tests", [])
+                        if test_results:
+                            print("Test results:")
+                            for test in test_results:
+                                status = "ok" if test.get("returncode", 1) == 0 else "fail"
+                                print(f"- {test.get('command')}: {status}")
+                        if result.get("committed"):
+                            print("Commit created for self-healing changes.")
+                        applied_entry = build_log_entry(
+                            error_context=record["error_context"],
+                            proposal_id=str(pending_healing_id),
+                            proposal_summary=record["proposal_summary"],
+                            files_changed=record["diff_summary"]["files"],
+                            loc_changed_estimate=record["diff_summary"]["loc_changed"],
+                            approval_status="applied",
+                        )
+                        append_log_entry(orchestrator.log_path, applied_entry)
+                    else:
+                        print(f"\n\033[1;31mSelf-healing apply failed: {result.get('reason')} \033[0m")
+                        fail_entry = build_log_entry(
+                            error_context=record["error_context"],
+                            proposal_id=str(pending_healing_id),
+                            proposal_summary=record["proposal_summary"],
+                            files_changed=record["diff_summary"]["files"],
+                            loc_changed_estimate=record["diff_summary"]["loc_changed"],
+                            approval_status="failed_apply",
+                        )
+                        append_log_entry(orchestrator.log_path, fail_entry)
+                    pending_healing_id = None
+                    continue
+                if user_input.lower() in {"no", "n"}:
+                    reject_entry = build_log_entry(
+                        error_context=record["error_context"],
+                        proposal_id=str(pending_healing_id),
+                        proposal_summary=record["proposal_summary"],
+                        files_changed=record["diff_summary"]["files"],
+                        loc_changed_estimate=record["diff_summary"]["loc_changed"],
+                        approval_status="rejected",
+                    )
+                    append_log_entry(orchestrator.log_path, reject_entry)
+                    print("\n\033[1;33mSelf-healing proposal rejected.\033[0m\n")
+                    pending_healing_id = None
+                    continue
+
+                print("\n\033[1;33mPlease answer 'yes' or 'no'.\033[0m\n")
                 continue
 
             # If a proposal was applied and awaiting commit confirmation
@@ -224,13 +406,21 @@ def interactive_mode():
                 
                 if "error" in result:
                     print(f"\n\033[1;31mError: {result['error']}\033[0m")
-                    last_healing_proposal = _handle_self_healing(
+                    healing_result = _handle_self_healing(
                         error_capture,
                         orchestrator,
                         user_input,
                         {"mode": "self-improve"},
                         result["error"],
                     )
+                    if healing_result:
+                        _register_healing_record(
+                            healing_result,
+                            orchestrator,
+                            healing_records,
+                            next_healing_id,
+                        )
+                        next_healing_id += 1
                     continue
                 
                 # Display final answer (streaming already printed agent outputs)
@@ -327,13 +517,21 @@ def interactive_mode():
                     # Display final answer (streaming already printed agent outputs)
                 if "error" in result:
                     print(f"\n\033[1;31mError: {result['error']}\033[0m")
-                    last_healing_proposal = _handle_self_healing(
+                    healing_result = _handle_self_healing(
                         error_capture,
                         orchestrator,
                         query_to_use,
                         {"mode": "full_council"},
                         result["error"],
                     )
+                    if healing_result:
+                        _register_healing_record(
+                            healing_result,
+                            orchestrator,
+                            healing_records,
+                            next_healing_id,
+                        )
+                        next_healing_id += 1
                     continue
 
                     print("\n" + "="*60)
@@ -375,13 +573,21 @@ def interactive_mode():
                         continue
                     if "error" in curator_result:
                         print(f"\n\033[1;31mError: {curator_result['error']}\033[0m")
-                        last_healing_proposal = _handle_self_healing(
+                        healing_result = _handle_self_healing(
                             error_capture,
                             orchestrator,
                             user_input,
                             {"mode": "curator"},
                             curator_result["error"],
                         )
+                        if healing_result:
+                            _register_healing_record(
+                                healing_result,
+                                orchestrator,
+                                healing_records,
+                                next_healing_id,
+                            )
+                            next_healing_id += 1
                         continue
                     
                     # Output already streamed, no need to print again
@@ -417,13 +623,21 @@ def interactive_mode():
                 
                 if "error" in curator_result:
                     print(f"\n\033[1;31mError: {curator_result['error']}\033[0m")
-                    last_healing_proposal = _handle_self_healing(
+                    healing_result = _handle_self_healing(
                         error_capture,
                         orchestrator,
                         user_input,
                         {"mode": "curator"},
                         curator_result["error"],
                     )
+                    if healing_result:
+                        _register_healing_record(
+                            healing_result,
+                            orchestrator,
+                            healing_records,
+                            next_healing_id,
+                        )
+                        next_healing_id += 1
                     continue
                 
                 # Output already streamed, no need to print again
@@ -454,7 +668,7 @@ def interactive_mode():
             break
         except Exception as e:
             print(f"\n\033[1;31mError: {e}\033[0m")
-            last_healing_proposal = _handle_self_healing(
+            healing_result = _handle_self_healing(
                 error_capture,
                 orchestrator,
                 user_input,
@@ -462,6 +676,14 @@ def interactive_mode():
                 str(e),
                 exc=e,
             )
+            if healing_result:
+                _register_healing_record(
+                    healing_result,
+                    orchestrator,
+                    healing_records,
+                    next_healing_id,
+                )
+                next_healing_id += 1
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -473,13 +695,20 @@ if __name__ == "__main__":
             print(f"\n❌ Error: {result['error']}")
             error_capture = ErrorCapture(project_root=Path(__file__).resolve().parent)
             orchestrator = HealingOrchestrator(run_council_sync, project_root=Path(__file__).resolve().parent)
-            _handle_self_healing(
+            healing_result = _handle_self_healing(
                 error_capture,
                 orchestrator,
                 prompt,
                 {"mode": "single_shot"},
                 result["error"],
             )
+            if healing_result:
+                _register_healing_record(
+                    healing_result,
+                    orchestrator,
+                    {},
+                    1,
+                )
             sys.exit(1)
         print("\n=== Council Results ===")
         print(f"Prompt: {result.get('prompt', prompt)}")
