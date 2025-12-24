@@ -8,11 +8,10 @@ pkill -f ttyd
 ttyd -W -i 127.0.0.1 -O -p 7681 -t titleFixed="Codex CLI - The Council" codex &
 
 # Launch Council bash terminal on port 7682 (WITH -W for writable)
-ttyd -W -i 127.0.0.1 -O -p 7682 -t titleFixed="Council Terminal" bash &
+ttyd -W -i 127.0.0.1 -O -p 7682 -t titleFixed="The Council" bash &
 
 echo "Web terminals launched:"
 echo "  - Codex CLI: http://localhost:7681"
 echo "  - Council Terminal: http://localhost:7682"
 echo ""
 echo "To stop: pkill -f ttyd"
-

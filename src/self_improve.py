@@ -13,16 +13,27 @@ def create_proposal_branch():
     except subprocess.CalledProcessError as e:
         raise Exception(f"Failed to create branch: {e.stderr.decode() if e.stderr else str(e)}")
 
-def commit_changes(message):
-    """Commit all changes with the given message"""
+def commit_changes(message, file_paths=None):
+    """Commit changes with the given message (optionally limited to file_paths)."""
     try:
-        # Check if there are any changes to commit
-        status_result = subprocess.run(["git", "status", "--porcelain"], 
-                                     check=True, capture_output=True, text=True)
+        status_cmd = ["git", "status", "--porcelain"]
+        if file_paths:
+            status_cmd.extend(["--"] + list(file_paths))
+        status_result = subprocess.run(
+            status_cmd, check=True, capture_output=True, text=True
+        )
         if not status_result.stdout.strip():
-            raise Exception("No actual changes detected — nothing to commit. The proposal may have contained placeholder or incomplete code.")
-        
-        subprocess.run(["git", "add", "."], check=True, capture_output=True)
+            raise Exception(
+                "No actual changes detected — nothing to commit. "
+                "The proposal may have contained placeholder or incomplete code."
+            )
+
+        add_cmd = ["git", "add"]
+        if file_paths:
+            add_cmd.extend(["--"] + list(file_paths))
+        else:
+            add_cmd.append(".")
+        subprocess.run(add_cmd, check=True, capture_output=True)
         
         # Run commit and capture output for better error reporting
         commit_result = subprocess.run(["git", "commit", "-m", message], 
@@ -34,6 +45,46 @@ def commit_changes(message):
         full_error = f"Git command failed.\nSTDERR: {error_msg}\nSTDOUT: {stdout_msg}\n\n"
         full_error += "Suggest manually reviewing the branch with: git status, git diff"
         raise Exception(full_error)
+
+def summarize_diffs(diffs: dict):
+    """Summarize unified diffs with added/removed line counts per file."""
+    summary = {}
+    for path, diff in diffs.items():
+        added = 0
+        removed = 0
+        for line in diff.splitlines():
+            if line.startswith("+++ ") or line.startswith("--- ") or line.startswith("@@"):
+                continue
+            if line.startswith("+"):
+                added += 1
+            elif line.startswith("-"):
+                removed += 1
+        summary[path] = {"added": added, "removed": removed}
+    return summary
+
+def apply_proposal(file_changes: dict, commit_message: str, auto_commit: bool = True):
+    """
+    Apply a self-improvement proposal to a new branch and optionally commit.
+    Returns metadata including branch name and diff summary.
+    """
+    if not file_changes:
+        raise Exception("No file changes found in proposal.")
+
+    branch = create_proposal_branch()
+    diffs = apply_changes(file_changes)
+    summary = summarize_diffs(diffs)
+
+    committed = False
+    if auto_commit:
+        commit_changes(commit_message, file_paths=file_changes.keys())
+        committed = True
+
+    return {
+        "branch": branch,
+        "diffs": diffs,
+        "summary": summary,
+        "committed": committed
+    }
 
 def generate_diff(old_content, new_content):
     """Generate a unified diff between old and new content"""
@@ -89,3 +140,58 @@ def get_current_branch():
     except subprocess.CalledProcessError:
         return None
 
+def cleanup_merged_proposal_branches(keep=3, base_branch="main"):
+    """
+    Delete older self-improve/proposal-* branches that are already merged into base_branch.
+    Keeps the newest `keep` merged branches.
+    """
+    try:
+        merged = subprocess.run(
+            ["git", "branch", "--merged", base_branch],
+            check=True,
+            capture_output=True,
+            text=True
+        ).stdout.splitlines()
+    except subprocess.CalledProcessError:
+        return []
+
+    merged = [line.strip().lstrip("* ").strip() for line in merged]
+    merged = [b for b in merged if b.startswith("self-improve/proposal-")]
+    if len(merged) <= keep:
+        return []
+
+    try:
+        refs = subprocess.run(
+            [
+                "git", "for-each-ref",
+                "--format=%(refname:short)|%(committerdate:iso8601)",
+                "refs/heads/self-improve/proposal-*"
+            ],
+            check=True,
+            capture_output=True,
+            text=True
+        ).stdout.splitlines()
+    except subprocess.CalledProcessError:
+        return []
+
+    dates = {}
+    for line in refs:
+        if "|" not in line:
+            continue
+        name, date = line.split("|", 1)
+        if name in merged:
+            dates[name] = date
+
+    merged_sorted = sorted(dates.items(), key=lambda item: item[1], reverse=True)
+    to_keep = {name for name, _ in merged_sorted[:keep]}
+    to_delete = [name for name, _ in merged_sorted[keep:] if name not in to_keep]
+
+    deleted = []
+    for branch in to_delete:
+        try:
+            subprocess.run(["git", "branch", "-d", branch], check=True, capture_output=True)
+            deleted.append(branch)
+        except subprocess.CalledProcessError:
+            continue
+
+    return deleted

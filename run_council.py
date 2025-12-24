@@ -1,12 +1,54 @@
 import os
 import sys
 import subprocess
+from pathlib import Path
 from src.council import run_council_sync, run_curator_only
 from src.memory import get_recent_sessions
+from src.self_improve import apply_proposal, commit_changes, cleanup_merged_proposal_branches
+from src.self_healing import ErrorCapture, HealingOrchestrator, HealingProposal
+
+def ensure_ollama_ready(retries=3, delay_seconds=3):
+    """Ensure Ollama is reachable; attempt to start it if needed."""
+    for attempt in range(1, retries + 1):
+        try:
+            result = subprocess.run(
+                ["ollama", "list"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                return True
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+
+        if attempt == 1:
+            try:
+                subprocess.Popen(
+                    ["ollama", "serve"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+            except FileNotFoundError:
+                print("Error: 'ollama' not found. Install Ollama and ensure it's on PATH.")
+                return False
+
+        if attempt < retries:
+            print(f"Ollama not ready. Retrying ({attempt}/{retries})...")
+            try:
+                import time
+                time.sleep(delay_seconds)
+            except Exception:
+                pass
+
+    print("Error: Ollama is not reachable. Run 'ollama serve' in another terminal.")
+    return False
 
 def ensure_model():
     """Ensure the phi3 model is pulled and available"""
     try:
+        if not ensure_ollama_ready():
+            return
         result = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0 and "phi3" not in result.stdout:
             print("Pulling phi3 model (first run, please wait)...")
@@ -23,6 +65,48 @@ def print_header():
     print("     (phi3 @ 3700 tokens — visionary portfolios)")
     print("=" * 60)
     print("Type your message. 'exit' or 'quit' to end. Ctrl+C to interrupt.\n")
+
+def _display_healing_proposal(proposal: HealingProposal) -> None:
+    print("\n" + "=" * 60)
+    print("\033[1;33mSELF-HEALING PROPOSAL\033[0m")
+    print("=" * 60)
+    print("\n\033[1;36mRoot Cause:\033[0m")
+    print(proposal.root_cause or "(No root cause provided)")
+    print("\n\033[1;36mProposed Diff:\033[0m")
+    print(proposal.unified_diff or "(No diff provided)")
+    print("\n\033[1;36mRecommended Tests:\033[0m")
+    for test_cmd in proposal.tests:
+        print(f"- {test_cmd}")
+    print("\n\033[1;36mRisks:\033[0m")
+    print(proposal.risks or "(No risks provided)")
+    print("\n\033[1;36mAgent Reasoning:\033[0m")
+    for agent_name, output in proposal.agent_reasoning.items():
+        print(f"\n[{agent_name}]\n{output}")
+    print("\n\033[1;33mType 'apply fix' to approve and apply this proposal.\033[0m")
+
+def _handle_self_healing(
+    error_capture: ErrorCapture,
+    orchestrator: HealingOrchestrator,
+    prompt: str,
+    agent_state: dict,
+    error_message: str,
+    exc: Exception | None = None,
+) -> HealingProposal | None:
+    try:
+        if exc is None:
+            error_context = error_capture.capture_error_result(
+                error_message, prompt=prompt, agent_state=agent_state
+            )
+        else:
+            error_context = error_capture.capture_exception(
+                exc, prompt=prompt, agent_state=agent_state
+            )
+        proposal = orchestrator.generate_proposal(error_context)
+        _display_healing_proposal(proposal)
+        return proposal
+    except Exception as healing_error:
+        print(f"\n\033[1;31mSelf-healing failed: {healing_error}\033[0m\n")
+        return None
 
 def interactive_mode():
     # Ensure model is available before starting
@@ -49,8 +133,12 @@ def interactive_mode():
 
     curator_history = []  # Conversation history with Curator only
     last_proposal = None  # Store last self-improvement proposal
+    last_healing_proposal = None  # Store last self-healing proposal
+    pending_apply = None  # Track applied-but-uncommitted proposal
     waiting_for_confirmation = False  # Track if we're waiting for yes/no
     refined_query = None  # Store refined query when Curator asks for confirmation
+    error_capture = ErrorCapture(project_root=Path(__file__).resolve().parent)
+    orchestrator = HealingOrchestrator(run_council_sync, project_root=Path(__file__).resolve().parent)
 
     while True:
         try:
@@ -65,6 +153,57 @@ def interactive_mode():
             if user_input.lower() in {"exit", "quit"}:
                 print("\n\033[1;32mCouncil session ended. Goodbye!\033[0m")
                 break
+
+            if user_input.lower() == "apply fix" and last_healing_proposal:
+                commit_message = f"Self-heal: {last_healing_proposal.root_cause[:72]}".strip()
+                result = orchestrator.apply_fix(
+                    last_healing_proposal,
+                    commit_message=commit_message,
+                    run_tests=True,
+                    auto_commit=True,
+                )
+                if result.get("applied"):
+                    print("\n\033[1;32mSelf-healing changes applied.\033[0m")
+                    test_results = result.get("tests", [])
+                    if test_results:
+                        print("Test results:")
+                        for test in test_results:
+                            status = "ok" if test.get("returncode", 1) == 0 else "fail"
+                            print(f"- {test.get('command')}: {status}")
+                    if result.get("committed"):
+                        print("Commit created for self-healing changes.")
+                else:
+                    print(f"\n\033[1;31mSelf-healing apply failed: {result.get('reason')} \033[0m")
+                last_healing_proposal = None
+                continue
+
+            # If a proposal was applied and awaiting commit confirmation
+            if pending_apply:
+                if user_input.lower() in {"yes", "y"}:
+                    try:
+                        commit_changes(
+                            pending_apply["commit_message"],
+                            file_paths=pending_apply["file_paths"]
+                        )
+                        print("\n\033[1;32mCommit created on the proposal branch.\033[0m\n")
+                        deleted = cleanup_merged_proposal_branches(keep=3, base_branch="main")
+                        if deleted:
+                            print("\033[1;33mCleaned up merged proposal branches:\033[0m")
+                            for branch in deleted:
+                                print(f"- {branch}")
+                            print("")
+                    except Exception as e:
+                        print(f"\n\033[1;31mCommit failed: {e}\033[0m\n")
+                    pending_apply = None
+                    continue
+                if user_input.lower() in {"no", "n"}:
+                    print("\n\033[1;33mLeft changes uncommitted on the proposal branch.\033[0m")
+                    print("Review with: git status, git diff\n")
+                    pending_apply = None
+                    continue
+
+                print("\n\033[1;33mPlease answer 'yes' to commit or 'no' to leave uncommitted.\033[0m\n")
+                continue
 
             # Check for Self-Improvement Mode trigger (only after Enter is pressed)
             is_self_improve_trigger = (
@@ -85,6 +224,13 @@ def interactive_mode():
                 
                 if "error" in result:
                     print(f"\n\033[1;31mError: {result['error']}\033[0m")
+                    last_healing_proposal = _handle_self_healing(
+                        error_capture,
+                        orchestrator,
+                        user_input,
+                        {"mode": "self-improve"},
+                        result["error"],
+                    )
                     continue
                 
                 # Display final answer (streaming already printed agent outputs)
@@ -107,8 +253,8 @@ def interactive_mode():
                         print(f"\n\033[1;36mFiles to modify:\033[0m {', '.join(last_proposal['file_changes'].keys())}")
                     if "impact" in last_proposal:
                         print(f"\n\033[1;36mExpected Impact:\033[0m {last_proposal['impact']}")
-                    print("\n\033[1;33mNote: Self-Improvement Mode is proposal-only. Review the proposal above and apply changes manually if desired.\033[0m")
-                    print("\033[1;33m(Execution is disabled for safety)\033[0m")
+                    print("\n\033[1;33mNote: Review the proposal above before applying changes.\033[0m")
+                    print("\033[1;33mIf approved, type 'approved. proceed' to apply on a new branch.\033[0m")
                 else:
                     last_proposal = None
 
@@ -119,12 +265,43 @@ def interactive_mode():
                 # Clean return to prompt - user can scroll up for history
                 continue
 
-            # Handle approval for self-improvement (execution disabled - show safe message)
+            # Handle approval for self-improvement (apply proposal to a new branch)
             if user_input.lower() == "approved. proceed" and last_proposal:
-                result = run_council_sync("Approved. Proceed", previous_proposal=last_proposal)
-                print(f"\n\033[1;33m{result.get('message', 'Proposal-only mode active')}\033[0m\n")
-                last_proposal = None  # Clear after showing message
-                curator_history = []  # Reset curator conversation
+                file_changes = last_proposal.get("file_changes") if isinstance(last_proposal, dict) else None
+                description = last_proposal.get("description", "Self-improvement proposal") if isinstance(last_proposal, dict) else ""
+                if not file_changes:
+                    print("\n\033[1;31mNo file changes found in the proposal.\033[0m\n")
+                    last_proposal = None
+                    curator_history = []
+                    waiting_for_confirmation = False
+                    continue
+
+                commit_message = f"Self-improve: {description[:60]}".strip()
+                try:
+                    result = apply_proposal(file_changes, commit_message=commit_message, auto_commit=False)
+                except Exception as e:
+                    print(f"\n\033[1;31mSelf-improvement apply failed: {e}\033[0m\n")
+                    last_proposal = None
+                    curator_history = []
+                    waiting_for_confirmation = False
+                    continue
+
+                print("\n\033[1;32mSelf-improvement applied.\033[0m")
+                print(f"Branch: {result.get('branch', 'unknown')}")
+                summary = result.get("summary", {})
+                if summary:
+                    print("Changes:")
+                    for path, stats in summary.items():
+                        print(f"- {path}: +{stats.get('added', 0)} / -{stats.get('removed', 0)}")
+                print("\nCommit changes to this branch now? (yes/no)")
+
+                pending_apply = {
+                    "commit_message": commit_message,
+                    "file_paths": list(file_changes.keys())
+                }
+
+                last_proposal = None
+                curator_history = []
                 waiting_for_confirmation = False
                 continue
 
@@ -148,9 +325,16 @@ def interactive_mode():
                     curator_history = []  # Reset after full council run
                     
                     # Display final answer (streaming already printed agent outputs)
-                    if "error" in result:
-                        print(f"\n\033[1;31mError: {result['error']}\033[0m")
-                        continue
+                if "error" in result:
+                    print(f"\n\033[1;31mError: {result['error']}\033[0m")
+                    last_healing_proposal = _handle_self_healing(
+                        error_capture,
+                        orchestrator,
+                        query_to_use,
+                        {"mode": "full_council"},
+                        result["error"],
+                    )
+                    continue
 
                     print("\n" + "="*60)
                     print("\033[1;37mFINAL COUNCIL ANSWER\033[0m")
@@ -171,8 +355,8 @@ def interactive_mode():
                             print(f"\n\033[1;36mFiles to modify:\033[0m {', '.join(last_proposal['file_changes'].keys())}")
                         if "impact" in last_proposal:
                             print(f"\n\033[1;36mExpected Impact:\033[0m {last_proposal['impact']}")
-                        print("\n\033[1;33mNote: Self-Improvement Mode is proposal-only. Review the proposal above and apply changes manually if desired.\033[0m")
-                        print("\033[1;33m(Execution is disabled for safety)\033[0m")
+                        print("\n\033[1;33mNote: Review the proposal above before applying changes.\033[0m")
+                        print("\033[1;33mIf approved, type 'approved. proceed' to apply on a new branch.\033[0m")
                     else:
                         last_proposal = None
 
@@ -191,6 +375,13 @@ def interactive_mode():
                         continue
                     if "error" in curator_result:
                         print(f"\n\033[1;31mError: {curator_result['error']}\033[0m")
+                        last_healing_proposal = _handle_self_healing(
+                            error_capture,
+                            orchestrator,
+                            user_input,
+                            {"mode": "curator"},
+                            curator_result["error"],
+                        )
                         continue
                     
                     # Output already streamed, no need to print again
@@ -226,6 +417,13 @@ def interactive_mode():
                 
                 if "error" in curator_result:
                     print(f"\n\033[1;31mError: {curator_result['error']}\033[0m")
+                    last_healing_proposal = _handle_self_healing(
+                        error_capture,
+                        orchestrator,
+                        user_input,
+                        {"mode": "curator"},
+                        curator_result["error"],
+                    )
                     continue
                 
                 # Output already streamed, no need to print again
@@ -256,14 +454,32 @@ def interactive_mode():
             break
         except Exception as e:
             print(f"\n\033[1;31mError: {e}\033[0m")
+            last_healing_proposal = _handle_self_healing(
+                error_capture,
+                orchestrator,
+                user_input,
+                {"mode": "interactive"},
+                str(e),
+                exc=e,
+            )
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         # Single-shot fallback
+        ensure_model()
         prompt = " ".join(sys.argv[1:])
         result = run_council_sync(prompt)
         if "error" in result:
             print(f"\n❌ Error: {result['error']}")
+            error_capture = ErrorCapture(project_root=Path(__file__).resolve().parent)
+            orchestrator = HealingOrchestrator(run_council_sync, project_root=Path(__file__).resolve().parent)
+            _handle_self_healing(
+                error_capture,
+                orchestrator,
+                prompt,
+                {"mode": "single_shot"},
+                result["error"],
+            )
             sys.exit(1)
         print("\n=== Council Results ===")
         print(f"Prompt: {result.get('prompt', prompt)}")

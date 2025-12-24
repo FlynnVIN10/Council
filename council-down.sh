@@ -25,9 +25,9 @@ echo "GOODBYE"
 echo "================================================================="
 echo ""
 
-echo "Stopping containers..."
-docker-compose down
+echo "Stopping local processes..."
+pkill -f "run_council.py" >/dev/null 2>&1 || true
+pkill -f "ollama serve" >/dev/null 2>&1 || true
 
 echo ""
 echo "All processes terminated."
-
