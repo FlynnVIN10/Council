@@ -1,3 +1,6 @@
+import json
+
+from src.healing_log import append_log_entry, build_log_entry, summarize_diff
 from src.self_healing import ErrorCapture, HealingOrchestrator
 
 
@@ -21,6 +24,8 @@ def test_error_capture_includes_trace_and_context(tmp_path):
 
 def test_healing_orchestrator_parses_sections(tmp_path):
     def fake_council_runner(prompt, skip_curator=True, stream=False):
+        if "Review this self-healing proposal" in prompt:
+            return {"final_answer": "Potentially wrong assumption about dict keys."}
         return {
             "final_answer": (
                 "ROOT_CAUSE:\nMissing key in dict.\n"
@@ -44,18 +49,24 @@ def test_healing_orchestrator_parses_sections(tmp_path):
     assert proposal.tests == ["pytest -v", "python scripts/smoke_test.py"]
     assert proposal.risks == "Minor behavior change."
     assert proposal.agent_reasoning["Curator"] == "Short"
+    assert proposal.self_critique == "Potentially wrong assumption about dict keys."
 
 
 def test_healing_log_written(tmp_path):
-    def fake_council_runner(prompt, skip_curator=True, stream=False):
-        return {"final_answer": "ROOT_CAUSE:\nX\nDIFF:\nNO_DIFF\nTESTS:\n\nRISKS:\nNone"}
-
     log_path = tmp_path / "healing_log.json"
-    orchestrator = HealingOrchestrator(
-        fake_council_runner, log_path=log_path, project_root=tmp_path
+    diff_summary = summarize_diff("+++ b/file.py\n+print('fix')\n")
+    entry = build_log_entry(
+        error_context={"error_message": "ValueError: boom", "stack_trace": "stack"},
+        proposal_id="1",
+        proposal_summary="Missing key in dict.",
+        files_changed=diff_summary["files"],
+        loc_changed_estimate=diff_summary["loc_changed"],
+        approval_status="pending",
     )
-    orchestrator.generate_proposal({"error_message": "y"})
+    append_log_entry(log_path, entry)
 
     assert log_path.exists()
-    content = log_path.read_text(encoding="utf-8")
-    assert "proposal_generated" in content
+    lines = log_path.read_text(encoding="utf-8").splitlines()
+    payload = json.loads(lines[0])
+    assert payload["approval_status"] == "pending"
+    assert payload["proposal_id"] == "1"

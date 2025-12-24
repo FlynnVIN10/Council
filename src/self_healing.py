@@ -18,6 +18,7 @@ class HealingProposal:
     risks: str
     agent_reasoning: Dict[str, str]
     raw_response: str
+    self_critique: str
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -27,6 +28,7 @@ class HealingProposal:
             "risks": self.risks,
             "agent_reasoning": self.agent_reasoning,
             "raw_response": self.raw_response,
+            "self_critique": self.self_critique,
         }
 
 
@@ -158,7 +160,7 @@ class HealingOrchestrator:
         }
         final_answer = result.get("final_answer") or result.get("message", "")
         proposal = self._parse_proposal(final_answer, agent_reasoning)
-        self._log_event("proposal_generated", error_context, proposal.to_dict())
+        proposal.self_critique = self._generate_self_critique(error_context, proposal)
         return proposal
 
     def apply_fix(
@@ -224,6 +226,7 @@ class HealingOrchestrator:
             risks=risks.strip(),
             agent_reasoning=agent_reasoning,
             raw_response=response,
+            self_critique="",
         )
 
     def _extract_section(self, response: str, header: str) -> str:
@@ -237,6 +240,28 @@ class HealingOrchestrator:
             if next_header in after:
                 return after.split(next_header, 1)[0].strip()
         return after.strip()
+
+    def _generate_self_critique(
+        self,
+        error_context: Dict[str, Any],
+        proposal: HealingProposal,
+    ) -> str:
+        prompt = (
+            "Review this self-healing proposal. "
+            "List any parts of this proposal that might be incorrect, speculative, "
+            "or based on missing context. Be brutally honest and concise.\n\n"
+            f"ERROR_MESSAGE: {error_context.get('error_message')}\n"
+            f"ROOT_CAUSE: {proposal.root_cause}\n"
+            f"DIFF:\n{proposal.unified_diff}\n"
+            f"TESTS: {', '.join(proposal.tests)}\n"
+            f"RISKS: {proposal.risks}\n"
+        )
+        try:
+            result = self.council_runner(prompt, skip_curator=True, stream=False)
+        except Exception:
+            return ""
+        critique = result.get("final_answer") or result.get("message", "")
+        return critique.strip()
 
     def _apply_unified_diff(self, diff_text: str) -> None:
         with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8") as handle:
@@ -302,19 +327,30 @@ class HealingOrchestrator:
             return False
         return True
 
-    def _log_event(self, event_type: str, context: Dict[str, Any], data: Dict[str, Any]) -> None:
-        entry = {
-            "timestamp": time.time(),
-            "event": event_type,
-            "context": context,
-            "data": data,
-        }
-        self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        log_entries = []
-        if self.log_path.exists():
-            try:
-                log_entries = json.loads(self.log_path.read_text(encoding="utf-8"))
-            except json.JSONDecodeError:
-                log_entries = []
-        log_entries.append(entry)
-        self.log_path.write_text(json.dumps(log_entries, indent=2), encoding="utf-8")
+    def create_branch(self, branch_name: str) -> str:
+        candidate = branch_name
+        suffix = 1
+        while self._branch_exists(candidate):
+            suffix += 1
+            candidate = f"{branch_name}-{suffix}"
+        subprocess.run(
+            ["git", "checkout", "-b", candidate],
+            check=True,
+            cwd=str(self.project_root),
+            capture_output=True,
+            text=True,
+        )
+        return candidate
+
+    def _branch_exists(self, branch_name: str) -> bool:
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "--verify", branch_name],
+                check=False,
+                cwd=str(self.project_root),
+                capture_output=True,
+                text=True,
+            )
+            return result.returncode == 0
+        except subprocess.SubprocessError:
+            return False
