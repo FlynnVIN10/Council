@@ -13,6 +13,7 @@ This project implements a fully local, offline "AI council" with 5 agents runnin
 See `LOCAL_SETUP.md` for macOS installation steps.
 See `LOCAL_MODELS.md` for model recommendations.
 See `EXAMPLES.md` for sample prompts and outputs.
+See `BENCHMARKS.md` for model performance benchmarking notes.
 
 ## Quick Start (Local CLI - Recommended)
 
@@ -44,6 +45,9 @@ python run_council.py "Your prompt here"  # Single-shot
 
 ## Testing
 
+Test coverage (Pre-v0.1):
+- 35 tests total (32 unit + 3 integration).
+
 Smoke tests (mocked by default, fast):
 ```bash
 python scripts/smoke_test.py
@@ -62,6 +66,11 @@ python scripts/smoke_test.py --use-ollama
 Unit tests:
 ```bash
 pytest
+```
+
+Integration tests (requires API server running):
+```bash
+pytest tests/integration -v
 ```
 
 ## Performance Expectations on 2018 MacBook Pro (CPU-only)
