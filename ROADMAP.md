@@ -112,7 +112,7 @@ Curator → Researcher → Critic → Planner → Judge
 - [ ] RAM usage profiled
 
 **Phase 3: Agent Implementation**
-- [ ] Agent base class/interface defined
+- [x] Agent base class/interface defined
 - [ ] Analyst agent implemented
 - [ ] Critic agent implemented
 - [ ] Innovator agent implemented
