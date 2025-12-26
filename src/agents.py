@@ -10,6 +10,15 @@ researcher = Agent(
     allow_delegation=False
 )
 
+analyst = Agent(
+    role="Analyst",
+    goal="Analyze data and generate insights from information provided",
+    backstory="You are a skilled analyst who examines information deeply, identifies patterns, and produces data-driven insights.",
+    verbose=True,
+    llm=llm,
+    allow_delegation=False
+)
+
 critic = Agent(
     role="Critic",
     goal="Evaluate and point out weaknesses in the researcher's proposal",
@@ -36,4 +45,3 @@ judge = Agent(
     llm=llm,
     allow_delegation=False
 )
-
